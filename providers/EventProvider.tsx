@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import createContextHook from "@nkzw/create-context-hook";
 import { Event } from "@/types/card";
@@ -94,7 +94,7 @@ export const [EventProvider, useEvents] = createContextHook(() => {
     return events.find(e => e.id === "non-categorized") || null;
   }, [events]);
 
-  return {
+  return useMemo(() => ({
     events,
     isLoading,
     addEvent,
@@ -103,5 +103,14 @@ export const [EventProvider, useEvents] = createContextHook(() => {
     getEventById,
     getNonCategorizedEvent,
     refetch: loadEvents,
-  };
+  }), [
+    events,
+    isLoading,
+    addEvent,
+    updateEvent,
+    deleteEvent,
+    getEventById,
+    getNonCategorizedEvent,
+    loadEvents,
+  ]);
 });

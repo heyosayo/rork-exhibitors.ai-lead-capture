@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import createContextHook from "@nkzw/create-context-hook";
 import { BusinessCard } from "@/types/card";
@@ -284,7 +284,7 @@ export const [CardProvider, useCards] = createContextHook(() => {
     await loadCards();
   }, [loadCards]);
 
-  return {
+  return useMemo(() => ({
     cards,
     isLoading,
     addCard,
@@ -294,5 +294,15 @@ export const [CardProvider, useCards] = createContextHook(() => {
     refetch,
     searchLinkedInProfile,
     searchMissingContactInfo,
-  };
+  }), [
+    cards,
+    isLoading,
+    addCard,
+    updateCard,
+    deleteCard,
+    clearAllCards,
+    refetch,
+    searchLinkedInProfile,
+    searchMissingContactInfo,
+  ]);
 });
