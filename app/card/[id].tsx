@@ -58,20 +58,24 @@ export default function CardDetailScreen() {
     try {
       const foundInfo = await searchMissingContactInfo(card);
       
-      if (foundInfo.email || foundInfo.phone) {
+      if (foundInfo.email || foundInfo.officePhone || foundInfo.cellPhone || foundInfo.faxPhone) {
         const updates: Partial<BusinessCard> = {};
         if (foundInfo.email) updates.email = foundInfo.email;
-        if (foundInfo.phone) updates.phone = foundInfo.phone;
+        if (foundInfo.officePhone) updates.officePhone = foundInfo.officePhone;
+        if (foundInfo.cellPhone) updates.cellPhone = foundInfo.cellPhone;
+        if (foundInfo.faxPhone) updates.faxPhone = foundInfo.faxPhone;
         
         updateCard(id as string, updates);
         
-        const foundItems = [];
+        const foundItems: string[] = [];
         if (foundInfo.email) foundItems.push('email');
-        if (foundInfo.phone) foundItems.push('phone');
+        if (foundInfo.officePhone) foundItems.push('office phone');
+        if (foundInfo.cellPhone) foundItems.push('cell phone');
+        if (foundInfo.faxPhone) foundItems.push('fax');
         
         Alert.alert(
           "Information Found!", 
-          `Found missing ${foundItems.join(' and ')} for this contact.`
+          `Found missing ${foundItems.join(', ')} for this contact.`
         );
       } else {
         Alert.alert(

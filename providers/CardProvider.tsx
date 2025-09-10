@@ -153,7 +153,7 @@ export const [CardProvider, useCards] = createContextHook(() => {
     }
   }, []);
 
-  const searchMissingContactInfo = useCallback(async (card: BusinessCard): Promise<{ email?: string; phone?: string; }> => {
+  const searchMissingContactInfo = useCallback(async (card: BusinessCard): Promise<{ email?: string; officePhone?: string; cellPhone?: string; faxPhone?: string; }> => {
     try {
       if (!card.name && !card.company) {
         return {};
@@ -168,7 +168,7 @@ export const [CardProvider, useCards] = createContextHook(() => {
       
       console.log('Searching for contact info for:', query);
       
-      // Use AI to search for contact information
+      // Use AI to search for contact information (email and specific phone types only)
       const response = await fetch('https://toolkit.rork.com/text/llm/', {
         method: 'POST',
         headers: {
@@ -178,11 +178,11 @@ export const [CardProvider, useCards] = createContextHook(() => {
           messages: [
             {
               role: 'system',
-              content: `You are a contact information researcher. Given a person's name, company, and title, help find their likely email address and phone number. For email addresses, prioritize company-specific emails over personal ones. Return the information in JSON format with 'email' and 'phone' fields. If you cannot find reliable information, return empty strings for those fields. Only return information you are confident about.`
+              content: `You are a contact information researcher. Given a person's name and company, help find their likely company email address and any available phone numbers split into specific fields. Return ONLY JSON with fields: email, officePhone, cellPhone, faxPhone. If a field is not found, use an empty string. Only return information you are confident about.`
             },
             {
               role: 'user',
-              content: `Find contact information for:\nName: ${card.name || 'Unknown'}\nCompany: ${card.company || 'Unknown'}\n\nPlease provide their likely company email address and phone number in JSON format. Focus on matching by name and company, not job title.`
+              content: `Find contact information for:\nName: ${card.name || 'Unknown'}\nCompany: ${card.company || 'Unknown'}\n\nReturn ONLY JSON with: {\n  "email": "",\n  "officePhone": "",\n  "cellPhone": "",\n  "faxPhone": ""\n}\nFocus on matching by name and company, not job title.`
             }
           ]
         })
@@ -212,16 +212,19 @@ export const [CardProvider, useCards] = createContextHook(() => {
         console.log('Attempting to parse contact info:', cleanedCompletion);
         
         const contactInfo = JSON.parse(cleanedCompletion);
-        const result: { email?: string; phone?: string; } = {};
+        const result: { email?: string; officePhone?: string; cellPhone?: string; faxPhone?: string; } = {};
         
-        // Only add email if it's missing and we found one
-        if (!card.email && contactInfo.email && typeof contactInfo.email === 'string' && contactInfo.email.trim() !== '') {
+        if (!card.email && typeof contactInfo.email === 'string' && contactInfo.email.trim() !== '') {
           result.email = contactInfo.email.trim();
         }
-        
-        // Only add phone if it's missing and we found one
-        if (!card.phone && contactInfo.phone && typeof contactInfo.phone === 'string' && contactInfo.phone.trim() !== '') {
-          result.phone = contactInfo.phone.trim();
+        if (!card.officePhone && typeof contactInfo.officePhone === 'string' && contactInfo.officePhone.trim() !== '') {
+          result.officePhone = contactInfo.officePhone.trim();
+        }
+        if (!card.cellPhone && typeof contactInfo.cellPhone === 'string' && contactInfo.cellPhone.trim() !== '') {
+          result.cellPhone = contactInfo.cellPhone.trim();
+        }
+        if (!card.faxPhone && typeof contactInfo.faxPhone === 'string' && contactInfo.faxPhone.trim() !== '') {
+          result.faxPhone = contactInfo.faxPhone.trim();
         }
         
         return result;
@@ -252,7 +255,10 @@ export const [CardProvider, useCards] = createContextHook(() => {
         linkedinUrl,
         profilePhotoUrl,
         email: card.email || missingInfo.email || null,
-        phone: card.phone || missingInfo.phone || null
+        officePhone: card.officePhone || missingInfo.officePhone || null,
+        cellPhone: card.cellPhone || missingInfo.cellPhone || null,
+        faxPhone: card.faxPhone || missingInfo.faxPhone || null,
+        phone: card.phone ?? null
       };
       
       const newCards = [...cards, cardWithEnhancements];
