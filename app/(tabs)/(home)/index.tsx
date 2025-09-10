@@ -13,7 +13,7 @@ import {
   ActionSheetIOS,
 } from "react-native";
 import { router } from "expo-router";
-import { Plus, Search, Trash2, User, Building, Mail, Phone, CreditCard, Camera, ImageIcon, UserPlus, Clock } from "lucide-react-native";
+import { Plus, Search, Trash2, User, Building, Mail, Phone, CreditCard, Clock } from "lucide-react-native";
 import { Linking } from "react-native";
 import { useCards } from "@/providers/CardProvider";
 import { BusinessCard } from "@/types/card";
@@ -32,7 +32,9 @@ export default function HomeScreen() {
       card.name?.toLowerCase().includes(query) ||
       card.company?.toLowerCase().includes(query) ||
       card.email?.toLowerCase().includes(query) ||
-      card.phone?.toLowerCase().includes(query)
+      card.officePhone?.toLowerCase().includes(query) ||
+      card.cellPhone?.toLowerCase().includes(query) ||
+      card.faxPhone?.toLowerCase().includes(query)
     );
   }, [cards, searchQuery]);
 
@@ -88,24 +90,33 @@ export default function HomeScreen() {
 
   const handleLinkedInPress = async (linkedinUrl: string) => {
     try {
-      // Try to open in LinkedIn app first
-      const linkedinAppUrl = linkedinUrl.replace('https://www.linkedin.com', 'linkedin://');
-      const canOpenApp = await Linking.canOpenURL(linkedinAppUrl);
-      
-      if (canOpenApp) {
-        await Linking.openURL(linkedinAppUrl);
-      } else {
-        // Fallback to web browser
-        await Linking.openURL(linkedinUrl);
+      if (!linkedinUrl || (!linkedinUrl.startsWith('http://') && !linkedinUrl.startsWith('https://'))) {
+        console.error('Invalid LinkedIn URL format:', linkedinUrl);
+        return;
+      }
+
+      if (Platform.OS === 'web') {
+        try {
+          window.open(linkedinUrl, '_blank');
+          return;
+        } catch (webError) {
+          console.error('Error opening LinkedIn on web:', webError);
+          return;
+        }
+      }
+
+      try {
+        const supported = await Linking.canOpenURL(linkedinUrl);
+        if (supported) {
+          await Linking.openURL(linkedinUrl);
+        } else {
+          throw new Error('URL not supported');
+        }
+      } catch (error) {
+        console.error('Error opening LinkedIn URL:', error);
       }
     } catch (error) {
-      console.error('Error opening LinkedIn:', error);
-      // Fallback to web browser
-      try {
-        await Linking.openURL(linkedinUrl);
-      } catch (fallbackError) {
-        console.error('Error opening LinkedIn in browser:', fallbackError);
-      }
+      console.error('Error in handleLinkedInPress:', error);
     }
   };
 
@@ -147,10 +158,22 @@ export default function HomeScreen() {
               <Text style={styles.detailText} numberOfLines={1}>{item.email}</Text>
             </View>
           )}
-          {item.phone && (
+          {item.officePhone && (
             <View style={styles.detailRow}>
               <Phone size={14} color="#9CA3AF" />
-              <Text style={styles.detailText}>{item.phone}</Text>
+              <Text style={styles.detailText} numberOfLines={1}>Office: {item.officePhone}</Text>
+            </View>
+          )}
+          {item.cellPhone && (
+            <View style={styles.detailRow}>
+              <Phone size={14} color="#9CA3AF" />
+              <Text style={styles.detailText} numberOfLines={1}>Cell: {item.cellPhone}</Text>
+            </View>
+          )}
+          {item.faxPhone && (
+            <View style={styles.detailRow}>
+              <Phone size={14} color="#9CA3AF" />
+              <Text style={styles.detailText} numberOfLines={1}>Fax: {item.faxPhone}</Text>
             </View>
           )}
           {item.createdAt && (
