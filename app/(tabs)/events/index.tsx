@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback, memo } from "react";
 import {
   StyleSheet,
   Text,
@@ -8,17 +8,18 @@ import {
   Alert,
   RefreshControl,
   Platform,
-  ActionSheetIOS,
   TextInput,
   Modal,
+  KeyboardAvoidingView,
+  Platform as RNPlatform,
 } from "react-native";
 import { router } from "expo-router";
-import { 
-  Plus, 
-  Calendar, 
-  Users, 
-  Trash2, 
-  Edit3, 
+import {
+  Plus,
+  Calendar,
+  Users,
+  Trash2,
+  Edit3,
   X,
   Check,
   FileSpreadsheet,
@@ -28,190 +29,53 @@ import { useCards } from "@/providers/CardProvider";
 import { Event } from "@/types/card";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function EventsScreen() {
-  const { events, deleteEvent, addEvent, updateEvent, isLoading, refetch } = useEvents();
-  const { cards } = useCards();
-  const [refreshing, setRefreshing] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-  const [eventName, setEventName] = useState("");
-  const [eventDescription, setEventDescription] = useState("");
-  
-  const isModalVisible = showCreateModal || editingEvent !== null;
+type EventWithCount = Event & { cardCount: number };
 
-  const eventsWithCounts = useMemo(() => {
-    return events.map(event => ({
-      ...event,
-      cardCount: cards.filter(card => 
-        card.eventId === event.id || 
-        (card.eventId === null && event.id === "non-categorized")
-      ).length,
-    }));
-  }, [events, cards]);
+type CreateEventModalProps = {
+  visible: boolean;
+  onClose: () => void;
+  editingEvent: Event | null;
+  eventName: string;
+  setEventName: (t: string) => void;
+  eventDescription: string;
+  setEventDescription: (t: string) => void;
+  onConfirm: () => void;
+};
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
-  };
-
-  const handleDelete = (event: Event) => {
-    if (event.id === "non-categorized") {
-      Alert.alert("Cannot Delete", "The Non-Categorized event cannot be deleted.");
-      return;
-    }
-
-    Alert.alert(
-      "Delete Event",
-      `Are you sure you want to delete "${event.name}"? All cards in this event will be moved to Non-Categorized.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: () => deleteEvent(event.id)
-        }
-      ]
-    );
-  };
-
-  const handleCreateEvent = () => {
-    if (!eventName.trim()) {
-      Alert.alert("Error", "Please enter an event name.");
-      return;
-    }
-
-    addEvent({
-      name: eventName.trim(),
-      description: eventDescription.trim() || null,
-      color: "#4F46E5",
-    });
-
-    closeModal();
-  };
-
-  const handleUpdateEvent = () => {
-    if (!editingEvent || !eventName.trim()) {
-      Alert.alert("Error", "Please enter an event name.");
-      return;
-    }
-
-    updateEvent(editingEvent.id, {
-      name: eventName.trim(),
-      description: eventDescription.trim() || null,
-    });
-
-    closeModal();
-  };
-
-  const closeModal = () => {
-    setEventName("");
-    setEventDescription("");
-    setShowCreateModal(false);
-    setEditingEvent(null);
-  };
-
-  const openEditModal = (event: Event) => {
-    if (event.id === "non-categorized") {
-      Alert.alert("Cannot Edit", "The Non-Categorized event cannot be edited.");
-      return;
-    }
-    
-    setEventName(event.name);
-    setEventDescription(event.description || "");
-    setEditingEvent(event);
-  };
-
-  const handleEventPress = (event: Event) => {
-    // Navigate to event details showing all cards in this event
-    router.push(`/event-details?eventId=${event.id}`);
-  };
-
-  const renderEvent = ({ item }: { item: Event & { cardCount: number } }) => (
-    <TouchableOpacity 
-      style={[styles.eventCard, { borderLeftColor: item.color }]}
-      onPress={() => handleEventPress(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.eventContent}>
-        <View style={styles.eventHeader}>
-          <View style={[styles.eventIcon, { backgroundColor: item.color + '20' }]}>
-            <Calendar size={24} color={item.color} />
-          </View>
-          <View style={styles.eventInfo}>
-            <Text style={styles.eventName}>{item.name}</Text>
-            {item.description && (
-              <Text style={styles.eventDescription} numberOfLines={2}>
-                {item.description}
-              </Text>
-            )}
-            <View style={styles.eventStats}>
-              <Users size={14} color="#9CA3AF" />
-              <Text style={styles.eventCount}>
-                {item.cardCount} {item.cardCount === 1 ? 'contact' : 'contacts'}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.eventActions}>
-          {item.id !== "non-categorized" && (
-            <>
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => openEditModal(item)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Edit3 size={18} color="#6B7280" />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => handleDelete(item)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Trash2 size={18} color="#EF4444" />
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-
-  const EmptyState = () => (
-    <View style={styles.emptyState}>
-      <Calendar size={64} color="#D1D5DB" />
-      <Text style={styles.emptyTitle}>No events yet</Text>
-      <Text style={styles.emptyText}>
-        Create your first event to organize your business cards
-      </Text>
-    </View>
-  );
-
-  const CreateEventModal = () => (
+const CreateEventModal = memo(function CreateEventModal({
+  visible,
+  onClose,
+  editingEvent,
+  eventName,
+  setEventName,
+  eventDescription,
+  setEventDescription,
+  onConfirm,
+}: CreateEventModalProps) {
+  return (
     <Modal
-      visible={isModalVisible}
-      animationType="slide"
+      visible={visible}
+      animationType="none"
       presentationStyle="pageSheet"
+      onRequestClose={onClose}
+      transparent={false}
     >
       <SafeAreaView style={styles.modalContainer}>
         <View style={styles.modalHeader}>
-          <TouchableOpacity 
-            onPress={closeModal}
-          >
+          <TouchableOpacity onPress={onClose} testID="closeCreateEventModal" accessibilityLabel="Close create event">
             <X size={24} color="#6B7280" />
           </TouchableOpacity>
-          <Text style={styles.modalTitle}>
+          <Text style={styles.modalTitle} testID="createEventTitle">
             {editingEvent ? "Edit Event" : "Create Event"}
           </Text>
-          <TouchableOpacity 
-            onPress={editingEvent ? handleUpdateEvent : handleCreateEvent}
-          >
+          <TouchableOpacity onPress={onConfirm} testID="confirmCreateEventModal" accessibilityLabel="Save event">
             <Check size={24} color="#4F46E5" />
           </TouchableOpacity>
         </View>
-
-        <View style={styles.modalContent}>
+        <KeyboardAvoidingView
+          style={styles.modalContent}
+          behavior={RNPlatform.OS === "ios" ? "padding" : undefined}
+        >
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Event Name</Text>
             <TextInput
@@ -220,6 +84,9 @@ export default function EventsScreen() {
               onChangeText={setEventName}
               placeholder="Enter event name"
               placeholderTextColor="#9CA3AF"
+              autoFocus
+              testID="eventNameInput"
+              returnKeyType="done"
             />
           </View>
 
@@ -234,28 +101,201 @@ export default function EventsScreen() {
               multiline
               numberOfLines={4}
               textAlignVertical="top"
+              testID="eventDescriptionInput"
             />
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
   );
+});
+
+export default function EventsScreen() {
+  const { events, deleteEvent, addEvent, updateEvent, isLoading, refetch } = useEvents();
+  const { cards } = useCards();
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [eventName, setEventName] = useState<string>("");
+  const [eventDescription, setEventDescription] = useState<string>("");
+
+  const isModalVisible = showCreateModal || editingEvent !== null;
+
+  const eventsWithCounts = useMemo<EventWithCount[]>(() => {
+    return events.map((event) => ({
+      ...event,
+      cardCount: cards.filter(
+        (card) => card.eventId === event.id || (card.eventId === null && event.id === "non-categorized")
+      ).length,
+    }));
+  }, [events, cards]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
+
+  const handleDelete = useCallback(
+    (event: Event) => {
+      if (event.id === "non-categorized") {
+        Alert.alert("Cannot Delete", "The Non-Categorized event cannot be deleted.");
+        return;
+      }
+
+      Alert.alert(
+        "Delete Event",
+        `Are you sure you want to delete "${event.name}"? All cards in this event will be moved to Non-Categorized.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: () => deleteEvent(event.id),
+          },
+        ]
+      );
+    },
+    [deleteEvent]
+  );
+
+  const closeModal = useCallback(() => {
+    setEventName("");
+    setEventDescription("");
+    setShowCreateModal(false);
+    setEditingEvent(null);
+  }, []);
+
+  const handleCreateEvent = useCallback(() => {
+    if (!eventName.trim()) {
+      Alert.alert("Error", "Please enter an event name.");
+      return;
+    }
+
+    addEvent({
+      name: eventName.trim(),
+      description: eventDescription.trim() || null,
+      color: "#4F46E5",
+    });
+
+    closeModal();
+  }, [addEvent, closeModal, eventDescription, eventName]);
+
+  const handleUpdateEvent = useCallback(() => {
+    if (!editingEvent || !eventName.trim()) {
+      Alert.alert("Error", "Please enter an event name.");
+      return;
+    }
+
+    updateEvent(editingEvent.id, {
+      name: eventName.trim(),
+      description: eventDescription.trim() || null,
+    });
+
+    closeModal();
+  }, [closeModal, editingEvent, eventDescription, eventName, updateEvent]);
+
+  const openEditModal = useCallback(
+    (event: Event) => {
+      if (event.id === "non-categorized") {
+        Alert.alert("Cannot Edit", "The Non-Categorized event cannot be edited.");
+        return;
+      }
+
+      setEventName(event.name);
+      setEventDescription(event.description ?? "");
+      setEditingEvent(event);
+    },
+    []
+  );
+
+  const handleEventPress = useCallback((event: Event) => {
+    router.push(`/event-details?eventId=${event.id}`);
+  }, []);
+
+  const renderEvent = useCallback(
+    ({ item }: { item: EventWithCount }) => (
+      <TouchableOpacity
+        style={[styles.eventCard, { borderLeftColor: item.color }]}
+        onPress={() => handleEventPress(item)}
+        activeOpacity={0.7}
+        testID={`eventCard-${item.id}`}
+      >
+        <View style={styles.eventContent}>
+          <View style={styles.eventHeader}>
+            <View style={[styles.eventIcon, { backgroundColor: item.color + "20" }]}>
+              <Calendar size={24} color={item.color} />
+            </View>
+            <View style={styles.eventInfo}>
+              <Text style={styles.eventName}>{item.name}</Text>
+              {item.description ? (
+                <Text style={styles.eventDescription} numberOfLines={2}>
+                  {item.description}
+                </Text>
+              ) : null}
+              <View style={styles.eventStats}>
+                <Users size={14} color="#9CA3AF" />
+                <Text style={styles.eventCount}>
+                  {item.cardCount} {item.cardCount === 1 ? "contact" : "contacts"}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.eventActions}>
+            {item.id !== "non-categorized" ? (
+              <>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => openEditModal(item)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  testID={`editEvent-${item.id}`}
+                >
+                  <Edit3 size={18} color="#6B7280" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => handleDelete(item)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  testID={`deleteEvent-${item.id}`}
+                >
+                  <Trash2 size={18} color="#EF4444" />
+                </TouchableOpacity>
+              </>
+            ) : null}
+          </View>
+        </View>
+      </TouchableOpacity>
+    ),
+    [handleDelete, handleEventPress, openEditModal]
+  );
+
+  const keyExtractor = useCallback((item: EventWithCount) => item.id, []);
+
+  const EmptyState = memo(() => (
+    <View style={styles.emptyState}>
+      <Calendar size={64} color="#D1D5DB" />
+      <Text style={styles.emptyTitle}>No events yet</Text>
+      <Text style={styles.emptyText}>Create your first event to organize your business cards</Text>
+    </View>
+  ));
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={["bottom"]}>
       <FlatList
         data={eventsWithCounts}
         renderItem={renderEvent}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[
-          styles.listContent,
-          eventsWithCounts.length === 0 && styles.emptyListContent
-        ]}
+        keyExtractor={keyExtractor}
+        contentContainerStyle={[styles.listContent, eventsWithCounts.length === 0 ? styles.emptyListContent : null]}
         ListHeaderComponent={
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.exportButton}
-            onPress={() => router.push('/export')}
+            onPress={() => router.push("/export")}
             activeOpacity={0.7}
+            testID="exportDataButton"
           >
             <View style={styles.exportIcon}>
               <FileSpreadsheet size={20} color="#4128C5" />
@@ -264,24 +304,29 @@ export default function EventsScreen() {
           </TouchableOpacity>
         }
         ListEmptyComponent={<EmptyState />}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor="#4128C5"
-          />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#4128C5" />}
+        keyboardShouldPersistTaps="handled"
       />
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.fab}
         onPress={() => setShowCreateModal(true)}
         activeOpacity={0.8}
+        testID="openCreateEventModal"
       >
         <Plus size={28} color="#FFFFFF" />
       </TouchableOpacity>
 
-      <CreateEventModal />
+      <CreateEventModal
+        visible={isModalVisible}
+        onClose={closeModal}
+        editingEvent={editingEvent}
+        eventName={eventName}
+        setEventName={setEventName}
+        eventDescription={eventDescription}
+        setEventDescription={setEventDescription}
+        onConfirm={editingEvent ? handleUpdateEvent : handleCreateEvent}
+      />
     </SafeAreaView>
   );
 }
@@ -376,7 +421,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: "absolute",
-    bottom: Platform.OS === 'ios' ? 24 : 16,
+    bottom: Platform.OS === "ios" ? 24 : 16,
     right: 16,
     width: 56,
     height: 56,
