@@ -5,6 +5,9 @@ export interface BusinessCard {
   company: string | null;
   email: string | null;
   phone: string | null;
+  officePhone: string | null;
+  cellPhone: string | null;
+  faxPhone: string | null;
   website: string | null;
   address: string | null;
   notes: string | null;

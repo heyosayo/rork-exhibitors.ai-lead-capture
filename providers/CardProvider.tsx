@@ -17,9 +17,12 @@ export const [CardProvider, useCards] = createContextHook(() => {
         // Migrate existing cards to have eventId field
         const migratedCards = parsedCards.map((card: any) => ({
           ...card,
-          eventId: card.eventId || null, // Default to null for non-categorized
-          linkedinUrl: card.linkedinUrl || null, // Default to null for existing cards
-          profilePhotoUrl: card.profilePhotoUrl || null, // Default to null for existing cards
+          eventId: card.eventId || null,
+          linkedinUrl: card.linkedinUrl || null,
+          profilePhotoUrl: card.profilePhotoUrl || null,
+          officePhone: card.officePhone ?? null,
+          cellPhone: card.cellPhone ?? null,
+          faxPhone: card.faxPhone ?? null,
         }));
         setCards(migratedCards);
         

@@ -57,9 +57,12 @@ export default function ScanScreen() {
               - title: job title
               - company: company name
               - email: email address
-              - phone: phone number
+              - phone: general phone number (if only one is present)
+              - officePhone: office phone number
+              - cellPhone: cell/mobile phone number
+              - faxPhone: fax number
               - website: website URL
-              - address: physical address
+              - address: physical mailing address
               - notes: any other relevant information
               
               If a field is not found, use null. Return ONLY valid JSON, no other text.`
@@ -286,7 +289,7 @@ export default function ScanScreen() {
             <X size={24} color="#1F2937" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Scan Business Card</Text>
-          <View style={{ width: 40 }} />
+          <View style={styles.headerRightSpacer} />
         </View>
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -528,6 +531,7 @@ export default function ScanScreen() {
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Phone</Text>
                     <TextInput
+                      testID="input-phone-general"
                       style={styles.input}
                       value={extractedData.phone || ""}
                       onChangeText={(text) => updateField("phone", text)}
@@ -537,9 +541,50 @@ export default function ScanScreen() {
                     />
                   </View>
 
+                  <View style={styles.inputRow}>
+                    <View style={[styles.inputGroup, styles.inputFlex]}>
+                      <Text style={styles.inputLabel}>Office</Text>
+                      <TextInput
+                        testID="input-phone-office"
+                        style={styles.input}
+                        value={extractedData.officePhone || ""}
+                        onChangeText={(text) => updateField("officePhone", text)}
+                        placeholder="Office phone"
+                        placeholderTextColor="#9CA3AF"
+                        keyboardType="phone-pad"
+                      />
+                    </View>
+                    <View style={[styles.inputGroup, styles.inputFlex, { marginLeft: 12 }]}> 
+                      <Text style={styles.inputLabel}>Cell</Text>
+                      <TextInput
+                        testID="input-phone-cell"
+                        style={styles.input}
+                        value={extractedData.cellPhone || ""}
+                        onChangeText={(text) => updateField("cellPhone", text)}
+                        placeholder="Cell phone"
+                        placeholderTextColor="#9CA3AF"
+                        keyboardType="phone-pad"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Fax</Text>
+                    <TextInput
+                      testID="input-phone-fax"
+                      style={styles.input}
+                      value={extractedData.faxPhone || ""}
+                      onChangeText={(text) => updateField("faxPhone", text)}
+                      placeholder="Fax number"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="phone-pad"
+                    />
+                  </View>
+
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Website</Text>
                     <TextInput
+                      testID="input-website"
                       style={styles.input}
                       value={extractedData.website || ""}
                       onChangeText={(text) => updateField("website", text)}
@@ -550,8 +595,23 @@ export default function ScanScreen() {
                   </View>
 
                   <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Address</Text>
+                    <TextInput
+                      testID="input-address"
+                      style={[styles.input, styles.textArea]}
+                      value={extractedData.address || ""}
+                      onChangeText={(text) => updateField("address", text)}
+                      placeholder="Street, City, State, ZIP"
+                      placeholderTextColor="#9CA3AF"
+                      multiline
+                      numberOfLines={2}
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Notes</Text>
                     <TextInput
+                      testID="input-notes"
                       style={[styles.input, styles.textArea]}
                       value={extractedData.notes || ""}
                       onChangeText={(text) => updateField("notes", text)}
@@ -741,6 +801,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1F2937",
   },
+  headerRightSpacer: {
+    width: 40,
+  },
   content: {
     flexGrow: 1,
     padding: 16,
@@ -845,6 +908,12 @@ const styles = StyleSheet.create({
   textArea: {
     minHeight: 60,
     textAlignVertical: "top",
+  },
+  inputRow: {
+    flexDirection: "row",
+  },
+  inputFlex: {
+    flex: 1,
   },
   actionButtons: {
     marginTop: 24,
