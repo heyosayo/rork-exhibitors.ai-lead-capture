@@ -25,7 +25,9 @@ export default function ManualEntryScreen() {
     title: "",
     company: "",
     email: "",
-    phone: "",
+    officePhone: "",
+    cellPhone: "",
+    faxPhone: "",
     website: "",
     linkedinUrl: "",
     notes: "",
@@ -61,13 +63,16 @@ export default function ManualEntryScreen() {
       title: formData.title?.trim() || null,
       company: formData.company?.trim() || null,
       email: formData.email?.trim() || null,
-      phone: formData.phone?.trim() || null,
+      officePhone: formData.officePhone?.trim() || null,
+      cellPhone: formData.cellPhone?.trim() || null,
+      faxPhone: formData.faxPhone?.trim() || null,
       website: formData.website?.trim() || null,
       linkedinUrl: formData.linkedinUrl?.trim() || null,
       address: null,
       notes: formData.notes?.trim() || null,
       eventId: formData.eventId || null,
       profilePhotoUrl: null,
+      phone: null,
     };
 
     addCard(newCard);
@@ -135,7 +140,7 @@ export default function ManualEntryScreen() {
             <X size={24} color="#1F2937" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Add Contact Manually</Text>
-          <View style={{ width: 40 }} />
+          <View style={styles.headerRightSpacer} />
         </View>
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -200,12 +205,36 @@ export default function ManualEntryScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Phone</Text>
+              <Text style={styles.inputLabel}>Office Phone</Text>
               <TextInput
                 style={styles.input}
-                value={formData.phone || ""}
-                onChangeText={(text) => updateField("phone", text)}
-                placeholder="Enter phone number"
+                value={formData.officePhone || ""}
+                onChangeText={(text) => updateField("officePhone", text)}
+                placeholder="Enter office phone number"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Cell Phone</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.cellPhone || ""}
+                onChangeText={(text) => updateField("cellPhone", text)}
+                placeholder="Enter cell phone number"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Fax</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.faxPhone || ""}
+                onChangeText={(text) => updateField("faxPhone", text)}
+                placeholder="Enter fax number"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="phone-pad"
               />
@@ -472,6 +501,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1F2937",
   },
+  headerRightSpacer: { width: 40 },
   content: {
     flexGrow: 1,
     padding: 16,

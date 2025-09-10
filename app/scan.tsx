@@ -528,19 +528,6 @@ export default function ScanScreen() {
                     />
                   </View>
 
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Phone</Text>
-                    <TextInput
-                      testID="input-phone-general"
-                      style={styles.input}
-                      value={extractedData.phone || ""}
-                      onChangeText={(text) => updateField("phone", text)}
-                      placeholder="Enter phone"
-                      placeholderTextColor="#9CA3AF"
-                      keyboardType="phone-pad"
-                    />
-                  </View>
-
                   <View style={styles.inputRow}>
                     <View style={[styles.inputGroup, styles.inputFlex]}>
                       <Text style={styles.inputLabel}>Office</Text>

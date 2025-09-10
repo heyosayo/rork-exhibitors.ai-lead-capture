@@ -256,9 +256,21 @@ export default function CardDetailScreen() {
             />
             <DetailRow
               icon={<Phone size={20} color="#6B7280" />}
-              label="Phone"
-              value={card.phone}
-              field="phone"
+              label="Office Phone"
+              value={card.officePhone}
+              field="officePhone"
+            />
+            <DetailRow
+              icon={<Phone size={20} color="#6B7280" />}
+              label="Cell Phone"
+              value={card.cellPhone}
+              field="cellPhone"
+            />
+            <DetailRow
+              icon={<Phone size={20} color="#6B7280" />}
+              label="Fax"
+              value={card.faxPhone}
+              field="faxPhone"
             />
             <DetailRow
               icon={<Globe size={20} color="#6B7280" />}
@@ -415,7 +427,7 @@ export default function CardDetailScreen() {
                   <Edit2 size={20} color="#FFFFFF" />
                   <Text style={styles.editButtonText}>Edit Contact</Text>
                 </TouchableOpacity>
-                {(!card.email || !card.phone) && (
+                {(!card.email || (!card.officePhone && !card.cellPhone && !card.faxPhone)) && (
                   <TouchableOpacity 
                     style={[styles.searchButton, isSearchingInfo && styles.searchButtonDisabled]} 
                     onPress={handleSearchMissingInfo}
