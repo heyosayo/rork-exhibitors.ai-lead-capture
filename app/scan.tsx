@@ -13,7 +13,7 @@ import {
   Platform,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { X, Camera, CheckCircle, Calendar, ChevronDown, Plus } from "lucide-react-native";
+import { X, Camera, CheckCircle, Calendar, ChevronDown, Plus, Edit3 } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useCards } from "@/providers/CardProvider";
 import { useEvents } from "@/providers/EventProvider";
@@ -317,6 +317,14 @@ export default function ScanScreen() {
                   onPress={() => pickImage(false)}
                 >
                   <Text style={styles.secondaryButtonText}>Choose from Gallery</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.manualEntryButton}
+                  onPress={() => router.push('/manual-entry' as any)}
+                >
+                  <Edit3 size={20} color="#4128C5" />
+                  <Text style={styles.manualEntryButtonText}>Add Manually</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -842,7 +850,23 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: "#4128C5",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "600" as const,
+  },
+  manualEntryButton: {
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#4128C5",
+    gap: 8,
+  },
+  manualEntryButtonText: {
+    color: "#4128C5",
+    fontSize: 16,
+    fontWeight: "600" as const,
   },
   processSection: {
     flex: 1,

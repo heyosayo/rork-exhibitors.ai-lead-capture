@@ -10,7 +10,6 @@ import {
   RefreshControl,
   Platform,
   Image,
-  ActionSheetIOS,
   Linking,
 } from "react-native";
 import { router } from "expo-router";
@@ -61,32 +60,7 @@ export default function HomeScreen() {
   };
 
   const handleAddCard = () => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ['Cancel', 'Use Photo', 'Add Manually'],
-          cancelButtonIndex: 0,
-          title: 'Add Business Card',
-        },
-        (buttonIndex) => {
-          if (buttonIndex === 1) {
-            router.push({ pathname: '/scan', params: { mode: 'camera' } });
-          } else if (buttonIndex === 2) {
-            router.push('/manual-entry' as any);
-          }
-        }
-      );
-    } else {
-      Alert.alert(
-        'Add Business Card',
-        'Choose how you want to add a business card:',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Use Photo', onPress: () => router.push({ pathname: '/scan', params: { mode: 'camera' } }) },
-          { text: 'Add Manually', onPress: () => router.push('/manual-entry' as any) },
-        ]
-      );
-    }
+    router.push('/scan');
   };
 
   const handleLinkedInPress = async (linkedinUrl: string) => {
