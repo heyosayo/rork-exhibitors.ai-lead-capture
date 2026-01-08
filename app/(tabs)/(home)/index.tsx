@@ -11,16 +11,17 @@ import {
   Platform,
   Image,
   ActionSheetIOS,
+  Linking,
 } from "react-native";
 import { router } from "expo-router";
 import { Plus, Search, Trash2, User, Building, Mail, Phone, CreditCard, Clock } from "lucide-react-native";
-import { Linking } from "react-native";
+
 import { useCards } from "@/providers/CardProvider";
 import { BusinessCard } from "@/types/card";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
-  const { cards, deleteCard, isLoading, refetch } = useCards();
+  const { cards, deleteCard, refetch } = useCards();
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
@@ -69,9 +70,9 @@ export default function HomeScreen() {
         },
         (buttonIndex) => {
           if (buttonIndex === 1) {
-            router.push('/scan?mode=camera');
+            router.push({ pathname: '/scan', params: { mode: 'camera' } });
           } else if (buttonIndex === 2) {
-            router.push('/manual-entry');
+            router.push('/manual-entry' as any);
           }
         }
       );
@@ -81,8 +82,8 @@ export default function HomeScreen() {
         'Choose how you want to add a business card:',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Use Photo', onPress: () => router.push('/scan?mode=camera') },
-          { text: 'Add Manually', onPress: () => router.push('/manual-entry') },
+          { text: 'Use Photo', onPress: () => router.push({ pathname: '/scan', params: { mode: 'camera' } }) },
+          { text: 'Add Manually', onPress: () => router.push('/manual-entry' as any) },
         ]
       );
     }
@@ -123,7 +124,7 @@ export default function HomeScreen() {
   const renderCard = ({ item }: { item: BusinessCard }) => (
     <TouchableOpacity 
       style={styles.card}
-      onPress={() => router.push(`/card/${item.id}`)}
+      onPress={() => router.push({ pathname: '/card/[id]', params: { id: item.id } })}
       activeOpacity={0.7}
     >
       <View style={styles.cardContent}>

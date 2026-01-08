@@ -74,7 +74,7 @@ export default function SettingsScreen() {
               icon={<FileSpreadsheet size={20} color="#4F46E5" />}
               title="Export Your Data"
               description="Export business cards to CSV or email"
-              onPress={() => router.push('/export')}
+              onPress={() => router.push('/export' as any)}
             />
             <SettingItem
               icon={<Trash2 size={20} color="#EF4444" />}

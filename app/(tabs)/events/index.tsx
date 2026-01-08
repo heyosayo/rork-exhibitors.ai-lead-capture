@@ -111,7 +111,7 @@ const CreateEventModal = memo(function CreateEventModal({
 });
 
 export default function EventsScreen() {
-  const { events, deleteEvent, addEvent, updateEvent, isLoading, refetch } = useEvents();
+  const { events, deleteEvent, addEvent, updateEvent, refetch } = useEvents();
   const { cards } = useCards();
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
@@ -213,7 +213,7 @@ export default function EventsScreen() {
   );
 
   const handleEventPress = useCallback((event: Event) => {
-    router.push(`/event-details?eventId=${event.id}`);
+    router.push({ pathname: '/event-details', params: { eventId: event.id } });
   }, []);
 
   const renderEvent = useCallback(
@@ -275,13 +275,15 @@ export default function EventsScreen() {
 
   const keyExtractor = useCallback((item: EventWithCount) => item.id, []);
 
-  const EmptyState = memo(() => (
-    <View style={styles.emptyState}>
-      <Calendar size={64} color="#D1D5DB" />
-      <Text style={styles.emptyTitle}>No events yet</Text>
-      <Text style={styles.emptyText}>Create your first event to organize your business cards</Text>
-    </View>
-  ));
+  const EmptyState = memo(function EmptyState() {
+    return (
+      <View style={styles.emptyState}>
+        <Calendar size={64} color="#D1D5DB" />
+        <Text style={styles.emptyTitle}>No events yet</Text>
+        <Text style={styles.emptyText}>Create your first event to organize your business cards</Text>
+      </View>
+    );
+  });
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
@@ -293,7 +295,7 @@ export default function EventsScreen() {
         ListHeaderComponent={
           <TouchableOpacity
             style={styles.exportButton}
-            onPress={() => router.push("/export")}
+            onPress={() => router.push('/export' as any)}
             activeOpacity={0.7}
             testID="exportDataButton"
           >
