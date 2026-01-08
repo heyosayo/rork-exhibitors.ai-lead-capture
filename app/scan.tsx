@@ -722,7 +722,7 @@ export default function ScanScreen() {
                       onPress={handleSave}
                     >
                       <CheckCircle size={20} color="#FFFFFF" />
-                      <Text style={styles.saveButtonText}>Continue to Event Selection</Text>
+                      <Text style={styles.saveButtonText}>Save</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity 
