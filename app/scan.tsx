@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -13,8 +13,9 @@ import {
   Platform,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { X, Camera, CheckCircle, Calendar, ChevronDown, Plus, Edit3 } from "lucide-react-native";
+import { X, Camera, CheckCircle, Calendar, ChevronDown, Plus, Edit3, ImageIcon } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import { useCards } from "@/providers/CardProvider";
 import { useEvents } from "@/providers/EventProvider";
 import { BusinessCard } from "@/types/card";
@@ -29,8 +30,9 @@ export default function ScanScreen() {
   const [extractedData, setExtractedData] = useState<Partial<BusinessCard>>({});
   const [isEditing, setIsEditing] = useState(false);
   const [showEventSelection, setShowEventSelection] = useState(false);
-  const [cameraPermission, setCameraPermission] = useState<boolean | null>(null);
-  const [isRequestingPermission, setIsRequestingPermission] = useState(false);
+  const [cameraPermission, requestPermission] = useCameraPermissions();
+  const [showCamera, setShowCamera] = useState(false);
+  const cameraRef = useRef<CameraView>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [showEventPicker, setShowEventPicker] = useState(false);
   const [showNewEventForm, setShowNewEventForm] = useState(false);
@@ -98,62 +100,51 @@ export default function ScanScreen() {
     }
   }, []);
 
-  const requestCameraPermission = useCallback(async () => {
-    if (isRequestingPermission) return false;
+  const handleTakePhoto = useCallback(async () => {
+    if (!cameraRef.current) return;
     
-    setIsRequestingPermission(true);
     try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      const granted = status === 'granted';
-      setCameraPermission(granted);
-      return granted;
-    } catch (error) {
-      console.error("Error requesting camera permission:", error);
-      setCameraPermission(false);
-      return false;
-    } finally {
-      setIsRequestingPermission(false);
-    }
-  }, [isRequestingPermission]);
-
-  const pickImage = useCallback(async (useCamera: boolean) => {
-    try {
-      if (useCamera) {
-        // Check and request camera permission if needed
-        if (cameraPermission === null || cameraPermission === false) {
-          const granted = await requestCameraPermission();
-          if (!granted) {
-            Alert.alert(
-              "Camera Permission Required",
-              "Please enable camera access in your device settings to take photos.",
-              [
-                { text: "Cancel", style: "cancel" },
-                { 
-                  text: "Try Again", 
-                  onPress: () => pickImage(true)
-                }
-              ]
-            );
-            return;
-          }
-        }
+      const photo = await cameraRef.current.takePictureAsync({
+        base64: true,
+        quality: 0.8,
+      });
+      
+      if (photo && photo.base64) {
+        setShowCamera(false);
+        setImage(photo.uri);
+        processImage(photo.base64);
       }
+    } catch (error) {
+      console.error("Error taking photo:", error);
+      Alert.alert("Error", "Failed to take photo. Please try again.");
+    }
+  }, [processImage]);
 
-      const result = await (useCamera 
-        ? ImagePicker.launchCameraAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            quality: 0.8,
-            base64: true,
-          })
-        : ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            quality: 0.8,
-            base64: true,
-          }));
+  const handleOpenCamera = useCallback(async () => {
+    if (!cameraPermission?.granted) {
+      const result = await requestPermission();
+      if (!result.granted) {
+        Alert.alert(
+          "Camera Permission Required",
+          "Please enable camera access in your device settings to take photos."
+        );
+        return;
+      }
+    }
+    setShowCamera(true);
+  }, [cameraPermission, requestPermission]);
+
+  const handlePickFromGallery = useCallback(async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true,
+      });
 
       if (!result.canceled && result.assets[0]) {
+        setShowCamera(false);
         setImage(result.assets[0].uri);
         if (result.assets[0].base64) {
           processImage(result.assets[0].base64);
@@ -163,25 +154,17 @@ export default function ScanScreen() {
       }
     } catch (error) {
       console.error("Error picking image:", error);
-      Alert.alert("Error", "Failed to access camera or gallery. Please try again.");
+      Alert.alert("Error", "Failed to access gallery. Please try again.");
     }
-  }, [cameraPermission, requestCameraPermission, processImage]);
+  }, [processImage]);
+
+
 
   useEffect(() => {
-    const initializePermissions = async () => {
-      // Check current permission status without requesting
-      const { status } = await ImagePicker.getCameraPermissionsAsync();
-      setCameraPermission(status === 'granted');
-      
-      // Auto-launch based on mode after permission check
-      if (mode === 'gallery') {
-        pickImage(false);
-      }
-      // For camera mode, don't auto-launch to prevent permission dialog from appearing immediately
-    };
-    
-    initializePermissions();
-  }, [mode, pickImage]);
+    if (mode === 'gallery') {
+      handlePickFromGallery();
+    }
+  }, [mode, handlePickFromGallery]);
 
   // Auto-select newly created event or most recent event
   useEffect(() => {
@@ -292,6 +275,42 @@ export default function ScanScreen() {
           <View style={styles.headerRightSpacer} />
         </View>
 
+        {showCamera ? (
+          <View style={styles.cameraContainer}>
+            <CameraView
+              ref={cameraRef}
+              style={styles.camera}
+              facing="back"
+            >
+              <View style={styles.cameraOverlay}>
+                <TouchableOpacity
+                  style={styles.cameraCloseButton}
+                  onPress={() => setShowCamera(false)}
+                >
+                  <X size={24} color="#FFFFFF" />
+                </TouchableOpacity>
+                
+                <View style={styles.cameraControls}>
+                  <TouchableOpacity
+                    style={styles.galleryButton}
+                    onPress={handlePickFromGallery}
+                  >
+                    <ImageIcon size={24} color="#FFFFFF" />
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={styles.captureButton}
+                    onPress={handleTakePhoto}
+                  >
+                    <View style={styles.captureButtonInner} />
+                  </TouchableOpacity>
+                  
+                  <View style={styles.controlSpacer} />
+                </View>
+              </View>
+            </CameraView>
+          </View>
+        ) : (
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {!image ? (
             <View style={styles.captureSection}>
@@ -303,18 +322,15 @@ export default function ScanScreen() {
               <View style={styles.buttonContainer}>
                 <TouchableOpacity 
                   style={styles.primaryButton}
-                  onPress={() => pickImage(true)}
-                  disabled={isRequestingPermission}
+                  onPress={handleOpenCamera}
                 >
                   <Camera size={20} color="#FFFFFF" />
-                  <Text style={styles.primaryButtonText}>
-                    {isRequestingPermission ? "Requesting Permission..." : "Take Photo"}
-                  </Text>
+                  <Text style={styles.primaryButtonText}>Take Photo</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
                   style={styles.secondaryButton}
-                  onPress={() => pickImage(false)}
+                  onPress={handlePickFromGallery}
                 >
                   <Text style={styles.secondaryButtonText}>Choose from Gallery</Text>
                 </TouchableOpacity>
@@ -768,6 +784,7 @@ export default function ScanScreen() {
             </View>
           )}
         </ScrollView>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -798,6 +815,63 @@ const styles = StyleSheet.create({
   },
   headerRightSpacer: {
     width: 40,
+  },
+  cameraContainer: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
+  camera: {
+    flex: 1,
+  },
+  cameraOverlay: {
+    flex: 1,
+    backgroundColor: "transparent",
+    justifyContent: "space-between",
+  },
+  cameraCloseButton: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cameraControls: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 40,
+    paddingBottom: 50,
+  },
+  galleryButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  captureButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 4,
+    borderColor: "#FFFFFF",
+  },
+  captureButtonInner: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#FFFFFF",
+  },
+  controlSpacer: {
+    width: 50,
   },
   content: {
     flexGrow: 1,
