@@ -210,9 +210,8 @@ export default function ScanScreen() {
       return;
     }
 
-    // Show event selection before saving
-    setShowEventSelection(true);
-    setIsEditing(false);
+    // Save directly since event selection is already in the form
+    handleFinalSave();
   };
 
   const handleFinalSave = () => {
