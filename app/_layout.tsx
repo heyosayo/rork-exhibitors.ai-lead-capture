@@ -20,7 +20,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === "login" || segments[0] === "signup";
+    const inAuthGroup = segments[0] === ("login" as string) || segments[0] === ("signup" as string);
 
     if (!isAuthenticated && !inAuthGroup) {
       console.log("Not authenticated, redirecting to login");

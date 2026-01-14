@@ -213,7 +213,7 @@ export default function EventsScreen() {
   );
 
   const handleEventPress = useCallback((event: Event) => {
-    router.push({ pathname: '/event-details', params: { eventId: event.id } });
+    router.push({ pathname: '/event-details' as any, params: { eventId: event.id } });
   }, []);
 
   const renderEvent = useCallback(

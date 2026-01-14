@@ -74,7 +74,7 @@ export default function EventDetailsScreen() {
   const renderCard = ({ item }: { item: BusinessCard }) => (
     <TouchableOpacity 
       style={styles.card}
-      onPress={() => router.push({ pathname: '/card/[id]', params: { id: item.id } })}
+      onPress={() => router.push({ pathname: '/card/[id]' as any, params: { id: item.id } })}
       activeOpacity={0.7}
     >
       <View style={styles.cardContent}>
