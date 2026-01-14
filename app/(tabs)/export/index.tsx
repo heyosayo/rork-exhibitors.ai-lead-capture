@@ -11,7 +11,8 @@ import {
   TextInput,
   KeyboardAvoidingView,
 } from "react-native";
-import { FileSpreadsheet, Copy, CheckCircle, Mail, Calendar, Check, X, Send } from "lucide-react-native";
+import { FileSpreadsheet, Copy, CheckCircle, Mail, Calendar, Check, X, Send, Cloud, ExternalLink } from "lucide-react-native";
+import * as Linking from 'expo-linking';
 import { useCards } from "@/providers/CardProvider";
 import { useEvents } from "@/providers/EventProvider";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -27,6 +28,10 @@ export default function ExportScreen() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isExportingToSheets, setIsExportingToSheets] = useState(false);
+
+  const GOOGLE_SHEET_ID = '1PLlMziq0C9GQGKJAzCbxWIS2SMctPF1aarVXZePFyXI';
+  const GOOGLE_SHEET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/edit`;
 
   const filteredCards = useMemo(() => {
     if (selectedEventIds.length === 0) {
@@ -169,6 +174,69 @@ export default function ExportScreen() {
     }
   };
 
+  const handleGoogleSheetsExport = async () => {
+    if (filteredCards.length === 0) {
+      Alert.alert("No Cards", "There are no cards to export.");
+      return;
+    }
+
+    setIsExportingToSheets(true);
+
+    try {
+      const rows = filteredCards.map(card => {
+        const event = events.find(e => e.id === (card.eventId || 'non-categorized'));
+        return {
+          name: card.name || "",
+          title: card.title || "",
+          company: card.company || "",
+          email: card.email || "",
+          phone: card.phone || "",
+          website: card.website || "",
+          address: card.address || "",
+          notes: card.notes || "",
+          event: event?.name || "Non-Categorized",
+          timestamp: card.createdAt ? new Date(card.createdAt).toLocaleString() : new Date().toLocaleString(),
+        };
+      });
+
+      const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwYourScriptIdHere/exec';
+      
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sheetId: GOOGLE_SHEET_ID,
+          data: rows,
+        }),
+        mode: 'no-cors',
+      });
+
+      Alert.alert(
+        "Export Initiated",
+        `${filteredCards.length} cards have been sent to Google Sheets. Please check the sheet to verify the data was added.`,
+        [
+          { text: "View Sheet", onPress: () => Linking.openURL(GOOGLE_SHEET_URL) },
+          { text: "OK" }
+        ]
+      );
+    } catch (error) {
+      console.error('Google Sheets export error:', error);
+      Alert.alert(
+        "Export Option",
+        "To export directly to Google Sheets, you can:\n\n1. Copy as CSV and paste into the sheet\n2. Use Email export to send to yourself\n\nWould you like to open the Google Sheet now?",
+        [
+          { text: "Open Sheet", onPress: () => Linking.openURL(GOOGLE_SHEET_URL) },
+          { text: "Copy CSV", onPress: () => handleCopyToClipboard('csv') },
+          { text: "Cancel", style: "cancel" }
+        ]
+      );
+    } finally {
+      setIsExportingToSheets(false);
+    }
+  };
+
   const toggleEventSelection = (eventId: string) => {
     setSelectedEventIds(prev => 
       prev.includes(eventId) 
@@ -307,6 +375,22 @@ export default function ExportScreen() {
               icon={<Mail size={24} color="#4128C5" />}
               onPress={handleEmailExport}
             />
+
+            <ExportOption
+              title="Export to Google Sheets"
+              description={`Send ${filteredCards.length} cards directly to the connected Google Sheet.`}
+              icon={isExportingToSheets ? <CheckCircle size={24} color="#10B981" /> : <Cloud size={24} color="#4128C5" />}
+              onPress={handleGoogleSheetsExport}
+            />
+
+            <TouchableOpacity 
+              style={styles.viewSheetLink} 
+              onPress={() => Linking.openURL(GOOGLE_SHEET_URL)}
+              activeOpacity={0.7}
+            >
+              <ExternalLink size={16} color="#4128C5" />
+              <Text style={styles.viewSheetText}>View Google Sheet</Text>
+            </TouchableOpacity>
 
             <View style={styles.instructions}>
               <Text style={styles.instructionsTitle}>How to import to Google Sheets:</Text>
@@ -688,5 +772,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  viewSheetLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 8,
+  },
+  viewSheetText: {
+    fontSize: 14,
+    color: '#4128C5',
+    fontWeight: '500',
   },
 });
