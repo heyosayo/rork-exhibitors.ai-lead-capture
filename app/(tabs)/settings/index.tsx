@@ -7,7 +7,7 @@ import {
   Alert,
   ScrollView,
 } from "react-native";
-import { Trash2, Info, Shield, ChevronRight, FileSpreadsheet, LogOut, User } from "lucide-react-native";
+import { Trash2, Info, Shield, ChevronRight, FileSpreadsheet, LogOut, User, Users } from "lucide-react-native";
 import { useCards } from "@/providers/CardProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -109,6 +109,18 @@ export default function SettingsScreen() {
             </View>
           </View>
         )}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Administration</Text>
+          <View style={styles.sectionContent}>
+            <SettingItem
+              icon={<Users size={20} color="#4F46E5" />}
+              title="Admin Panel"
+              description="View all user accounts"
+              onPress={() => router.push('/admin' as any)}
+            />
+          </View>
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Data Management</Text>

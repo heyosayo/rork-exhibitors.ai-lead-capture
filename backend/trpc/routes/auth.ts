@@ -124,4 +124,22 @@ export const authRouter = createTRPCRouter({
       }
       return { success: true };
     }),
+
+  getAllUsers: publicProcedure
+    .query(async () => {
+      const allUsers = Array.from(users.values()).map(user => ({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        createdAt: user.createdAt,
+      }));
+      
+      console.log("Fetching all users, count:", allUsers.length);
+      
+      return {
+        users: allUsers.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
+        total: allUsers.length,
+      };
+    }),
 });
