@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import { useFonts, Poppins_600SemiBold, Poppins_700Bold } from "@expo-google-fonts/poppins";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { CardProvider } from "@/providers/CardProvider";
@@ -90,6 +91,20 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      console.log("Poppins fonts loaded");
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>

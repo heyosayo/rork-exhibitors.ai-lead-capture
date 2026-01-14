@@ -212,11 +212,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.header}>
-        <Image 
-          source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/5qvbda1p79ub04bs6vv59' }}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+        <Text style={styles.brandText}>Exhibitor Tech</Text>
       </View>
       
       <View style={styles.searchContainer}>
@@ -266,13 +262,15 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: "#4128C5",
-    paddingVertical: 20,
+    paddingVertical: 24,
     paddingHorizontal: 16,
     alignItems: "center",
   },
-  logo: {
-    width: 280,
-    height: 84,
+  brandText: {
+    fontSize: 32,
+    fontFamily: "Poppins_700Bold",
+    color: "#FFFFFF",
+    letterSpacing: 0.5,
   },
   searchContainer: {
     flexDirection: "row",
