@@ -7,8 +7,11 @@ import {
   Alert,
   ScrollView,
   Platform,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
 } from "react-native";
-import { FileSpreadsheet, Download, Copy, CheckCircle, Mail, Calendar, Check } from "lucide-react-native";
+import { FileSpreadsheet, Copy, CheckCircle, Mail, Calendar, Check, X, Send } from "lucide-react-native";
 import { useCards } from "@/providers/CardProvider";
 import { useEvents } from "@/providers/EventProvider";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -21,6 +24,9 @@ export default function ExportScreen() {
   const [copiedFormat, setCopiedFormat] = useState<string | null>(null);
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
   const [showEventFilter, setShowEventFilter] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
   const filteredCards = useMemo(() => {
     if (selectedEventIds.length === 0) {
@@ -89,13 +95,33 @@ export default function ExportScreen() {
     );
   };
 
-  const handleEmailExport = async () => {
+  const handleEmailExport = () => {
+    setShowEmailModal(true);
+  };
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const sendEmailExport = async () => {
+    if (!recipientEmail.trim()) {
+      Alert.alert("Error", "Please enter an email address.");
+      return;
+    }
+
+    if (!validateEmail(recipientEmail.trim())) {
+      Alert.alert("Error", "Please enter a valid email address.");
+      return;
+    }
+
     if (Platform.OS === 'web') {
       Alert.alert(
         "Email Export",
         "Email export is not available on web. Please use the copy options instead.",
         [{ text: "OK" }]
       );
+      setShowEmailModal(false);
       return;
     }
 
@@ -106,9 +132,11 @@ export default function ExportScreen() {
         "Email is not configured on this device. Please use the copy options instead.",
         [{ text: "OK" }]
       );
+      setShowEmailModal(false);
       return;
     }
 
+    setIsSending(true);
     const csvContent = generateCSV();
     const fileName = `business-cards-${new Date().toISOString().split('T')[0]}.csv`;
     
@@ -118,6 +146,7 @@ export default function ExportScreen() {
         : 'from all events';
       
       await MailComposer.composeAsync({
+        recipients: [recipientEmail.trim()],
         subject: `Business Cards Export - ${filteredCards.length} contacts ${exportDescription}`,
         body: `Please find attached ${filteredCards.length} business card contacts exported as a CSV file ${exportDescription}.\n\nYou can import this file directly into Google Sheets, Excel, or any other spreadsheet application.`,
         attachments: [{
@@ -126,6 +155,8 @@ export default function ExportScreen() {
           mimeType: 'text/csv',
         } as any],
       });
+      setShowEmailModal(false);
+      setRecipientEmail('');
     } catch (error) {
       console.error('Email export error:', error);
       Alert.alert(
@@ -133,6 +164,8 @@ export default function ExportScreen() {
         "Failed to create email. Please try the copy option instead.",
         [{ text: "OK" }]
       );
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -280,11 +313,80 @@ export default function ExportScreen() {
               <Text style={styles.instructionStep}>1. Copy data as CSV using the button above</Text>
               <Text style={styles.instructionStep}>2. Open Google Sheets in your browser</Text>
               <Text style={styles.instructionStep}>3. Select cell A1 and paste (Ctrl/Cmd + V)</Text>
-              <Text style={styles.instructionStep}>4. Use "Data → Split text to columns" if needed</Text>
+              <Text style={styles.instructionStep}>4. Use &quot;Data → Split text to columns&quot; if needed</Text>
             </View>
           </View>
         )}
       </ScrollView>
+
+      <Modal
+        visible={showEmailModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEmailModal(false)}
+      >
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Send Export via Email</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  setShowEmailModal(false);
+                  setRecipientEmail('');
+                }}
+                style={styles.closeButton}
+              >
+                <X size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalDescription}>
+              Enter the email address where you would like to send the CSV export of {filteredCards.length} business cards.
+            </Text>
+            
+            <View style={styles.inputContainer}>
+              <Mail size={20} color="#6B7280" style={styles.inputIcon} />
+              <TextInput
+                style={styles.emailInput}
+                placeholder="Enter email address"
+                placeholderTextColor="#9CA3AF"
+                value={recipientEmail}
+                onChangeText={setRecipientEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoFocus
+              />
+            </View>
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={() => {
+                  setShowEmailModal(false);
+                  setRecipientEmail('');
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.sendButton, isSending && styles.sendButtonDisabled]}
+                onPress={sendEmailExport}
+                disabled={isSending}
+              >
+                <Send size={18} color="#FFFFFF" />
+                <Text style={styles.sendButtonText}>
+                  {isSending ? 'Sending...' : 'Send Export'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -494,5 +596,97 @@ const styles = StyleSheet.create({
   checkboxSelected: {
     backgroundColor: "#4128C5",
     borderColor: "#4128C5",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 16,
+    marginBottom: 24,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  emailInput: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#1F2937',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  sendButton: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#4128C5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+  },
+  sendButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
