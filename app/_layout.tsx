@@ -18,7 +18,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading) {
+      console.log("Auth still loading, waiting...");
+      return;
+    }
+
+    console.log("Auth loaded, hiding splash screen");
+    SplashScreen.hideAsync();
 
     const inAuthGroup = segments[0] === ("login" as string) || segments[0] === ("signup" as string);
 
@@ -84,9 +90,6 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
 
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
