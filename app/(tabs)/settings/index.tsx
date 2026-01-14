@@ -7,13 +7,32 @@ import {
   Alert,
   ScrollView,
 } from "react-native";
-import { Trash2, Info, Shield, ChevronRight, FileSpreadsheet } from "lucide-react-native";
+import { Trash2, Info, Shield, ChevronRight, FileSpreadsheet, LogOut, User } from "lucide-react-native";
 import { useCards } from "@/providers/CardProvider";
+import { useAuth } from "@/providers/AuthProvider";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
 export default function SettingsScreen() {
   const { cards, clearAllCards } = useCards();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Sign Out", 
+          style: "destructive",
+          onPress: async () => {
+            await logout();
+          }
+        }
+      ]
+    );
+  };
 
   const handleClearData = () => {
     Alert.alert(
@@ -67,6 +86,30 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
+        {user && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Account</Text>
+            <View style={styles.sectionContent}>
+              <View style={styles.userCard}>
+                <View style={styles.userAvatar}>
+                  <User size={24} color="#4F46E5" />
+                </View>
+                <View style={styles.userInfo}>
+                  <Text style={styles.userName}>{user.firstName} {user.lastName}</Text>
+                  <Text style={styles.userEmail}>{user.email}</Text>
+                </View>
+              </View>
+              <SettingItem
+                icon={<LogOut size={20} color="#EF4444" />}
+                title="Sign Out"
+                description="Sign out of your account"
+                onPress={handleLogout}
+                destructive
+              />
+            </View>
+          </View>
+        )}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Data Management</Text>
           <View style={styles.sectionContent}>
@@ -203,5 +246,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#4B5563",
     lineHeight: 20,
+  },
+  userCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  userAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#EEF2FF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 17,
+    fontWeight: "600" as const,
+    color: "#1F2937",
+    marginBottom: 2,
+  },
+  userEmail: {
+    fontSize: 14,
+    color: "#6B7280",
   },
 });

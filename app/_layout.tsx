@@ -1,19 +1,56 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { CardProvider } from "@/providers/CardProvider";
 import { EventProvider } from "@/providers/EventProvider";
+import { AuthProvider, useAuth } from "@/providers/AuthProvider";
+import { trpc, trpcClient } from "@/lib/trpc";
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === "login" || segments[0] === "signup";
+
+    if (!isAuthenticated && !inAuthGroup) {
+      console.log("Not authenticated, redirecting to login");
+      router.replace("/login" as any);
+    } else if (isAuthenticated && inAuthGroup) {
+      console.log("Authenticated, redirecting to home");
+      router.replace("/");
+    }
+  }, [isAuthenticated, isLoading, segments, router]);
+
+  return <>{children}</>;
+}
+
 function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen 
+        name="login" 
+        options={{ 
+          headerShown: false,
+          gestureEnabled: false,
+        }} 
+      />
+      <Stack.Screen 
+        name="signup" 
+        options={{ 
+          headerShown: false,
+        }} 
+      />
       <Stack.Screen 
         name="scan" 
         options={{ 
@@ -46,14 +83,20 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <EventProvider>
-          <CardProvider>
-            <RootLayoutNav />
-          </CardProvider>
-        </EventProvider>
-      </GestureHandlerRootView>
-    </QueryClientProvider>
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <AuthProvider>
+            <AuthGate>
+              <EventProvider>
+                <CardProvider>
+                  <RootLayoutNav />
+                </CardProvider>
+              </EventProvider>
+            </AuthGate>
+          </AuthProvider>
+        </GestureHandlerRootView>
+      </QueryClientProvider>
+    </trpc.Provider>
   );
 }
