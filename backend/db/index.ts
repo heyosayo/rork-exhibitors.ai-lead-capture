@@ -93,31 +93,47 @@ export async function saveUsersIndex(index: UsersIndex): Promise<boolean> {
 }
 
 export async function getUserById(userId: string): Promise<StoredUser | null> {
-  return dbGet<StoredUser>(`user_${userId}`);
+  const key = userId.startsWith('user_') ? userId : `user_${userId}`;
+  console.log("getUserById - looking up key:", key);
+  return dbGet<StoredUser>(key);
 }
 
 export async function getUserByEmail(email: string): Promise<StoredUser | null> {
+  const emailKey = email.toLowerCase().trim();
+  console.log("getUserByEmail - looking up email:", emailKey);
   const index = await getUsersIndex();
-  const userId = index.emailToId[email.toLowerCase()];
+  console.log("getUserByEmail - index emailToId keys:", Object.keys(index.emailToId));
+  const userId = index.emailToId[emailKey];
+  console.log("getUserByEmail - found userId:", userId);
   if (!userId) return null;
   return getUserById(userId);
 }
 
 export async function saveUser(user: StoredUser): Promise<boolean> {
-  const saved = await dbSet(`user_${user.id}`, user);
-  if (!saved) return false;
+  const key = user.id.startsWith('user_') ? user.id : `user_${user.id}`;
+  console.log("saveUser - saving with key:", key);
+  const saved = await dbSet(key, user);
+  if (!saved) {
+    console.error("saveUser - failed to save user data");
+    return false;
+  }
   
   const index = await getUsersIndex();
+  console.log("saveUser - current index:", JSON.stringify(index));
   if (!index.userIds.includes(user.id)) {
     index.userIds.push(user.id);
   }
-  index.emailToId[user.email.toLowerCase()] = user.id;
+  const emailKey = user.email.toLowerCase().trim();
+  index.emailToId[emailKey] = user.id;
   
-  return saveUsersIndex(index);
+  const indexSaved = await saveUsersIndex(index);
+  console.log("saveUser - index saved:", indexSaved, "emailKey:", emailKey);
+  return indexSaved;
 }
 
 export async function getAllUsers(): Promise<StoredUser[]> {
   const index = await getUsersIndex();
+  console.log("getAllUsers - index userIds:", index.userIds);
   const users: StoredUser[] = [];
   
   for (const userId of index.userIds) {
@@ -127,6 +143,7 @@ export async function getAllUsers(): Promise<StoredUser[]> {
     }
   }
   
+  console.log("getAllUsers - found users:", users.length);
   return users;
 }
 
