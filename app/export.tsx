@@ -8,7 +8,7 @@ import {
   ScrollView,
   Platform,
 } from "react-native";
-import { FileSpreadsheet, Copy, CheckCircle, Mail, Calendar, Check, FileText } from "lucide-react-native";
+import { FileSpreadsheet, Copy, CheckCircle, Mail, Calendar, Check } from "lucide-react-native";
 import { useCards } from "@/providers/CardProvider";
 import { useEvents } from "@/providers/EventProvider";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -59,43 +59,6 @@ export default function ExportScreen() {
     return csvContent;
   };
 
-  const generateTranscript = () => {
-    const lines: string[] = [];
-    const exportDescription = selectedEventIds.length > 0
-      ? `Filtered Export (${selectedEventIds.length} event(s))`
-      : 'All Events';
-
-    lines.push('═══════════════════════════════════════════');
-    lines.push('        BUSINESS CARDS TRANSCRIPT');
-    lines.push(`        ${exportDescription}`);
-    lines.push(`        ${filteredCards.length} Contact(s)`);
-    lines.push(`        Generated: ${new Date().toLocaleDateString()}`);
-    lines.push('═══════════════════════════════════════════');
-    lines.push('');
-
-    filteredCards.forEach((card, index) => {
-      const event = events.find(e => e.id === (card.eventId || 'non-categorized'));
-      lines.push(`───── Contact ${index + 1} of ${filteredCards.length} ─────`);
-      if (card.name) lines.push(`Name:      ${card.name}`);
-      if (card.title) lines.push(`Title:     ${card.title}`);
-      if (card.company) lines.push(`Company:   ${card.company}`);
-      if (card.email) lines.push(`Email:     ${card.email}`);
-      if (card.phone) lines.push(`Phone:     ${card.phone}`);
-      if (card.website) lines.push(`Website:   ${card.website}`);
-      if (card.address) lines.push(`Address:   ${card.address}`);
-      if (card.notes) lines.push(`Notes:     ${card.notes}`);
-      lines.push(`Event:     ${event?.name || 'Non-Categorized'}`);
-      if (card.createdAt) lines.push(`Scanned:   ${new Date(card.createdAt).toLocaleString()}`);
-      lines.push('');
-    });
-
-    lines.push('═══════════════════════════════════════════');
-    lines.push('        END OF TRANSCRIPT');
-    lines.push('═══════════════════════════════════════════');
-
-    return lines.join('\n');
-  };
-
   const generateJSON = () => {
     return JSON.stringify(filteredCards.map(card => {
       const event = events.find(e => e.id === (card.eventId || 'non-categorized'));
@@ -114,8 +77,8 @@ export default function ExportScreen() {
     }), null, 2);
   };
 
-  const handleCopyToClipboard = async (format: 'csv' | 'json' | 'transcript') => {
-    const content = format === 'csv' ? generateCSV() : format === 'transcript' ? generateTranscript() : generateJSON();
+  const handleCopyToClipboard = async (format: 'csv' | 'json') => {
+    const content = format === 'csv' ? generateCSV() : generateJSON();
     await Clipboard.setStringAsync(content);
     setCopiedFormat(format);
     setTimeout(() => setCopiedFormat(null), 2000);
@@ -308,14 +271,6 @@ export default function ExportScreen() {
                 icon={<Copy size={24} color="#4128C5" />}
                 onPress={() => handleCopyToClipboard('csv')}
                 format="csv"
-              />
-
-              <ExportOption
-                title="Copy as Transcript"
-                description={`Readable plain-text format. ${filteredCards.length} cards will be exported.`}
-                icon={<FileText size={24} color="#4128C5" />}
-                onPress={() => handleCopyToClipboard('transcript')}
-                format="transcript"
               />
 
               <ExportOption
