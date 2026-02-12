@@ -28,6 +28,8 @@ import { useEvents } from "@/providers/EventProvider";
 import { useCards } from "@/providers/CardProvider";
 import { Event } from "@/types/card";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useLayout } from "@/providers/LayoutProvider";
+import ModeToggle from "@/components/ModeToggle";
 
 type EventWithCount = Event & { cardCount: number };
 
@@ -113,6 +115,7 @@ const CreateEventModal = memo(function CreateEventModal({
 export default function EventsScreen() {
   const { events, deleteEvent, addEvent, updateEvent, refetch } = useEvents();
   const { cards } = useCards();
+  const { showDesktopLayout, isWeb } = useLayout();
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
@@ -145,17 +148,12 @@ export default function EventsScreen() {
         Alert.alert("Cannot Delete", "The Non-Categorized event cannot be deleted.");
         return;
       }
-
       Alert.alert(
         "Delete Event",
         `Are you sure you want to delete "${event.name}"? All cards in this event will be moved to Non-Categorized.`,
         [
           { text: "Cancel", style: "cancel" },
-          {
-            text: "Delete",
-            style: "destructive",
-            onPress: () => deleteEvent(event.id),
-          },
+          { text: "Delete", style: "destructive", onPress: () => deleteEvent(event.id) },
         ]
       );
     },
@@ -174,13 +172,7 @@ export default function EventsScreen() {
       Alert.alert("Error", "Please enter an event name.");
       return;
     }
-
-    addEvent({
-      name: eventName.trim(),
-      description: eventDescription.trim() || null,
-      color: "#4F46E5",
-    });
-
+    addEvent({ name: eventName.trim(), description: eventDescription.trim() || null, color: "#4F46E5" });
     closeModal();
   }, [addEvent, closeModal, eventDescription, eventName]);
 
@@ -189,28 +181,19 @@ export default function EventsScreen() {
       Alert.alert("Error", "Please enter an event name.");
       return;
     }
-
-    updateEvent(editingEvent.id, {
-      name: eventName.trim(),
-      description: eventDescription.trim() || null,
-    });
-
+    updateEvent(editingEvent.id, { name: eventName.trim(), description: eventDescription.trim() || null });
     closeModal();
   }, [closeModal, editingEvent, eventDescription, eventName, updateEvent]);
 
-  const openEditModal = useCallback(
-    (event: Event) => {
-      if (event.id === "non-categorized") {
-        Alert.alert("Cannot Edit", "The Non-Categorized event cannot be edited.");
-        return;
-      }
-
-      setEventName(event.name);
-      setEventDescription(event.description ?? "");
-      setEditingEvent(event);
-    },
-    []
-  );
+  const openEditModal = useCallback((event: Event) => {
+    if (event.id === "non-categorized") {
+      Alert.alert("Cannot Edit", "The Non-Categorized event cannot be edited.");
+      return;
+    }
+    setEventName(event.name);
+    setEventDescription(event.description ?? "");
+    setEditingEvent(event);
+  }, []);
 
   const handleEventPress = useCallback((event: Event) => {
     router.push({ pathname: '/event-details' as any, params: { eventId: event.id } });
@@ -219,7 +202,7 @@ export default function EventsScreen() {
   const renderEvent = useCallback(
     ({ item }: { item: EventWithCount }) => (
       <TouchableOpacity
-        style={[styles.eventCard, { borderLeftColor: item.color }]}
+        style={[styles.eventCard, { borderLeftColor: item.color }, showDesktopLayout && styles.eventCardDesktop]}
         onPress={() => handleEventPress(item)}
         activeOpacity={0.7}
         testID={`eventCard-${item.id}`}
@@ -232,9 +215,7 @@ export default function EventsScreen() {
             <View style={styles.eventInfo}>
               <Text style={styles.eventName}>{item.name}</Text>
               {item.description ? (
-                <Text style={styles.eventDescription} numberOfLines={2}>
-                  {item.description}
-                </Text>
+                <Text style={styles.eventDescription} numberOfLines={2}>{item.description}</Text>
               ) : null}
               <View style={styles.eventStats}>
                 <Users size={14} color="#9CA3AF" />
@@ -244,7 +225,6 @@ export default function EventsScreen() {
               </View>
             </View>
           </View>
-
           <View style={styles.eventActions}>
             {item.id !== "non-categorized" ? (
               <>
@@ -270,7 +250,7 @@ export default function EventsScreen() {
         </View>
       </TouchableOpacity>
     ),
-    [handleDelete, handleEventPress, openEditModal]
+    [handleDelete, handleEventPress, openEditModal, showDesktopLayout]
   );
 
   const keyExtractor = useCallback((item: EventWithCount) => item.id, []);
@@ -286,38 +266,69 @@ export default function EventsScreen() {
   });
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
+    <SafeAreaView style={styles.container} edges={showDesktopLayout ? [] : ["bottom"]}>
+      {showDesktopLayout && (
+        <View style={styles.desktopHeader}>
+          <Text style={styles.desktopHeaderTitle}>Events</Text>
+          <TouchableOpacity
+            style={styles.desktopCreateButton}
+            onPress={() => setShowCreateModal(true)}
+            activeOpacity={0.7}
+          >
+            <Plus size={18} color="#FFFFFF" />
+            <Text style={styles.desktopCreateButtonText}>New Event</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {isWeb && !showDesktopLayout && (
+        <View style={styles.mobileWebHeader}>
+          <ModeToggle />
+        </View>
+      )}
+
       <FlatList
         data={eventsWithCounts}
         renderItem={renderEvent}
         keyExtractor={keyExtractor}
-        contentContainerStyle={[styles.listContent, eventsWithCounts.length === 0 ? styles.emptyListContent : null]}
+        numColumns={showDesktopLayout ? 2 : 1}
+        key={showDesktopLayout ? "desktop-2col" : "mobile-1col"}
+        contentContainerStyle={[
+          styles.listContent,
+          showDesktopLayout && styles.listContentDesktop,
+          eventsWithCounts.length === 0 ? styles.emptyListContent : null,
+        ]}
+        columnWrapperStyle={showDesktopLayout ? styles.columnWrapper : undefined}
         ListHeaderComponent={
-          <TouchableOpacity
-            style={styles.exportButton}
-            onPress={() => router.push('/export' as any)}
-            activeOpacity={0.7}
-            testID="exportDataButton"
-          >
-            <View style={styles.exportIcon}>
-              <FileSpreadsheet size={20} color="#4128C5" />
-            </View>
-            <Text style={styles.exportText}>Export Your Data</Text>
-          </TouchableOpacity>
+          !showDesktopLayout ? (
+            <TouchableOpacity
+              style={styles.exportButton}
+              onPress={() => router.push('/export' as any)}
+              activeOpacity={0.7}
+              testID="exportDataButton"
+            >
+              <View style={styles.exportIcon}>
+                <FileSpreadsheet size={20} color="#4128C5" />
+              </View>
+              <Text style={styles.exportText}>Export Your Data</Text>
+            </TouchableOpacity>
+          ) : null
         }
         ListEmptyComponent={<EmptyState />}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#4128C5" />}
         keyboardShouldPersistTaps="handled"
       />
 
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setShowCreateModal(true)}
-        activeOpacity={0.8}
-        testID="openCreateEventModal"
-      >
-        <Plus size={28} color="#FFFFFF" />
-      </TouchableOpacity>
+      {!showDesktopLayout && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => setShowCreateModal(true)}
+          activeOpacity={0.8}
+          testID="openCreateEventModal"
+        >
+          <Plus size={28} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
 
       <CreateEventModal
         visible={isModalVisible}
@@ -338,11 +349,54 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F6FAFE",
   },
+  desktopHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 20,
+    paddingHorizontal: 32,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  desktopHeaderTitle: {
+    fontSize: 24,
+    fontWeight: "700" as const,
+    color: "#1F2937",
+  },
+  desktopCreateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#4128C5",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 8,
+  },
+  desktopCreateButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600" as const,
+  },
+  mobileWebHeader: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
   listContent: {
     padding: 16,
   },
+  listContentDesktop: {
+    paddingHorizontal: 32,
+    paddingTop: 24,
+  },
   emptyListContent: {
     flex: 1,
+  },
+  columnWrapper: {
+    gap: 16,
   },
   eventCard: {
     backgroundColor: "#FFFFFF",
@@ -354,6 +408,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 3,
+  },
+  eventCardDesktop: {
+    flex: 1,
+    maxWidth: "49%" as any,
   },
   eventContent: {
     padding: 16,
@@ -375,7 +433,7 @@ const styles = StyleSheet.create({
   },
   eventName: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: "#1F2937",
     marginBottom: 4,
   },
@@ -411,7 +469,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: "#4B5563",
     marginTop: 16,
     marginBottom: 8,
@@ -452,7 +510,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: "#1F2937",
   },
   modalContent: {
@@ -464,7 +522,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 16,
-    fontWeight: "500",
+    fontWeight: "500" as const,
     color: "#374151",
     marginBottom: 8,
   },
@@ -508,7 +566,7 @@ const styles = StyleSheet.create({
   },
   exportText: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: "#1F2937",
   },
 });

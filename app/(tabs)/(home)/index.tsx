@@ -14,21 +14,22 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { Plus, Search, Trash2, User, Building, Mail, Phone, CreditCard, Clock } from "lucide-react-native";
-
 import { useCards } from "@/providers/CardProvider";
 import { BusinessCard } from "@/types/card";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useLayout } from "@/providers/LayoutProvider";
+import ModeToggle from "@/components/ModeToggle";
 
 export default function HomeScreen() {
   const { cards, deleteCard, refetch } = useCards();
+  const { showDesktopLayout, isWeb } = useLayout();
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
   const filteredCards = useMemo(() => {
     if (!searchQuery.trim()) return cards;
-    
     const query = searchQuery.toLowerCase();
-    return cards.filter(card => 
+    return cards.filter(card =>
       card.name?.toLowerCase().includes(query) ||
       card.company?.toLowerCase().includes(query) ||
       card.email?.toLowerCase().includes(query) ||
@@ -50,8 +51,8 @@ export default function HomeScreen() {
       `Are you sure you want to delete ${card.name || 'this card'}?`,
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
+        {
+          text: "Delete",
           style: "destructive",
           onPress: () => deleteCard(card.id)
         }
@@ -66,38 +67,22 @@ export default function HomeScreen() {
   const handleLinkedInPress = async (linkedinUrl: string) => {
     try {
       if (!linkedinUrl || (!linkedinUrl.startsWith('http://') && !linkedinUrl.startsWith('https://'))) {
-        console.error('Invalid LinkedIn URL format:', linkedinUrl);
         return;
       }
-
       if (Platform.OS === 'web') {
-        try {
-          window.open(linkedinUrl, '_blank');
-          return;
-        } catch (webError) {
-          console.error('Error opening LinkedIn on web:', webError);
-          return;
-        }
+        try { window.open(linkedinUrl, '_blank'); } catch (e) { console.error(e); }
+        return;
       }
-
-      try {
-        const supported = await Linking.canOpenURL(linkedinUrl);
-        if (supported) {
-          await Linking.openURL(linkedinUrl);
-        } else {
-          throw new Error('URL not supported');
-        }
-      } catch (error) {
-        console.error('Error opening LinkedIn URL:', error);
-      }
+      const supported = await Linking.canOpenURL(linkedinUrl);
+      if (supported) { await Linking.openURL(linkedinUrl); }
     } catch (error) {
       console.error('Error in handleLinkedInPress:', error);
     }
   };
 
   const renderCard = ({ item }: { item: BusinessCard }) => (
-    <TouchableOpacity 
-      style={styles.card}
+    <TouchableOpacity
+      style={[styles.card, showDesktopLayout && styles.cardDesktop]}
       onPress={() => router.push({ pathname: '/card/[id]' as any, params: { id: item.id } })}
       activeOpacity={0.7}
     >
@@ -105,7 +90,7 @@ export default function HomeScreen() {
         <View style={styles.cardHeader}>
           <View style={styles.avatar}>
             {item.profilePhotoUrl ? (
-              <Image 
+              <Image
                 source={{ uri: item.profilePhotoUrl }}
                 style={styles.avatarImage}
                 defaultSource={require('@/assets/images/icon.png')}
@@ -125,7 +110,7 @@ export default function HomeScreen() {
             )}
           </View>
         </View>
-        
+
         <View style={styles.cardDetails}>
           {item.email && (
             <View style={styles.detailRow}>
@@ -177,7 +162,7 @@ export default function HomeScreen() {
 
         <View style={styles.cardActions}>
           {item.linkedinUrl && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.linkedinButton}
               onPress={() => handleLinkedInPress(item.linkedinUrl!)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -187,7 +172,7 @@ export default function HomeScreen() {
               </View>
             </TouchableOpacity>
           )}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.deleteButton}
             onPress={() => handleDelete(item)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -210,12 +195,22 @@ export default function HomeScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.header}>
-        <Text style={styles.brandText}>Exhibitor Tech</Text>
+    <SafeAreaView style={styles.container} edges={showDesktopLayout ? [] : ['bottom']}>
+      <View style={[styles.header, showDesktopLayout && styles.headerDesktop]}>
+        <Text style={[styles.brandText, showDesktopLayout && styles.brandTextDesktop]}>
+          {showDesktopLayout ? "Business Cards" : "Exhibitor Tech"}
+        </Text>
+        {isWeb && !showDesktopLayout && (
+          <View style={styles.mobileToggleWrap}>
+            <ModeToggle />
+          </View>
+        )}
       </View>
-      
-      <View style={styles.searchContainer}>
+
+      <View style={[
+        styles.searchContainer,
+        showDesktopLayout && styles.searchContainerDesktop,
+      ]}>
         <Search size={20} color="#9CA3AF" />
         <TextInput
           style={styles.searchInput}
@@ -224,16 +219,30 @@ export default function HomeScreen() {
           onChangeText={setSearchQuery}
           placeholderTextColor="#9CA3AF"
         />
+        {showDesktopLayout && (
+          <TouchableOpacity
+            style={styles.desktopAddButton}
+            onPress={handleAddCard}
+            activeOpacity={0.7}
+          >
+            <Plus size={18} color="#FFFFFF" />
+            <Text style={styles.desktopAddButtonText}>Add Card</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <FlatList
         data={filteredCards}
         renderItem={renderCard}
         keyExtractor={(item) => item.id}
+        numColumns={showDesktopLayout ? 2 : 1}
+        key={showDesktopLayout ? "desktop-2col" : "mobile-1col"}
         contentContainerStyle={[
           styles.listContent,
+          showDesktopLayout && styles.listContentDesktop,
           filteredCards.length === 0 && styles.emptyListContent
         ]}
+        columnWrapperStyle={showDesktopLayout ? styles.columnWrapper : undefined}
         ListEmptyComponent={<EmptyState />}
         refreshControl={
           <RefreshControl
@@ -244,13 +253,15 @@ export default function HomeScreen() {
         }
       />
 
-      <TouchableOpacity 
-        style={styles.fab}
-        onPress={handleAddCard}
-        activeOpacity={0.8}
-      >
-        <Plus size={28} color="#FFFFFF" />
-      </TouchableOpacity>
+      {!showDesktopLayout && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={handleAddCard}
+          activeOpacity={0.8}
+        >
+          <Plus size={28} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 }
@@ -266,11 +277,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignItems: "center",
   },
+  headerDesktop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 20,
+    paddingHorizontal: 32,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
   brandText: {
     fontSize: 32,
     fontFamily: "Poppins_700Bold",
     color: "#FFFFFF",
     letterSpacing: 0.5,
+  },
+  brandTextDesktop: {
+    fontSize: 24,
+    color: "#1F2937",
+    fontFamily: "Poppins_600SemiBold",
+  },
+  mobileToggleWrap: {
+    position: "absolute",
+    top: 8,
+    right: 12,
   },
   searchContainer: {
     flexDirection: "row",
@@ -287,18 +318,45 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  searchContainerDesktop: {
+    marginHorizontal: 32,
+    marginTop: 24,
+    marginBottom: 16,
+  },
   searchInput: {
     flex: 1,
     marginLeft: 12,
     fontSize: 16,
     color: "#1F2937",
   },
+  desktopAddButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#4128C5",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginLeft: 16,
+    gap: 8,
+  },
+  desktopAddButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600" as const,
+  },
   listContent: {
     padding: 16,
     paddingTop: 8,
   },
+  listContentDesktop: {
+    paddingHorizontal: 32,
+    paddingTop: 8,
+  },
   emptyListContent: {
     flex: 1,
+  },
+  columnWrapper: {
+    gap: 16,
   },
   card: {
     backgroundColor: "#FFFFFF",
@@ -309,6 +367,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 3,
+  },
+  cardDesktop: {
+    flex: 1,
+    maxWidth: "49%" as any,
   },
   cardContent: {
     padding: 16,
@@ -337,7 +399,7 @@ const styles = StyleSheet.create({
   },
   cardName: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: "#1F2937",
     marginBottom: 2,
   },
@@ -379,7 +441,7 @@ const styles = StyleSheet.create({
   linkedinText: {
     color: "#FFFFFF",
     fontSize: 8,
-    fontWeight: "bold",
+    fontWeight: "bold" as const,
   },
   cardActions: {
     position: "absolute",
@@ -402,7 +464,7 @@ const styles = StyleSheet.create({
   linkedinButtonText: {
     color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: "bold",
+    fontWeight: "bold" as const,
   },
   deleteButton: {
     padding: 4,
@@ -415,7 +477,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: "#4B5563",
     marginTop: 16,
     marginBottom: 8,

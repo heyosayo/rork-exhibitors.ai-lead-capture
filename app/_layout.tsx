@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { CardProvider } from "@/providers/CardProvider";
 import { EventProvider } from "@/providers/EventProvider";
 import { AuthProvider, useAuth } from "@/providers/AuthProvider";
+import { LayoutProvider } from "@/providers/LayoutProvider";
 import { trpc, trpcClient } from "@/lib/trpc";
 
 SplashScreen.preventAutoHideAsync();
@@ -112,11 +113,13 @@ export default function RootLayout() {
         <GestureHandlerRootView style={{ flex: 1 }}>
           <AuthProvider>
             <AuthGate>
-              <EventProvider>
-                <CardProvider>
-                  <RootLayoutNav />
-                </CardProvider>
-              </EventProvider>
+              <LayoutProvider>
+                <EventProvider>
+                  <CardProvider>
+                    <RootLayoutNav />
+                  </CardProvider>
+                </EventProvider>
+              </LayoutProvider>
             </AuthGate>
           </AuthProvider>
         </GestureHandlerRootView>

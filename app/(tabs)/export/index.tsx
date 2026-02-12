@@ -18,10 +18,12 @@ import { useEvents } from "@/providers/EventProvider";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Clipboard from 'expo-clipboard';
 import * as MailComposer from 'expo-mail-composer';
+import { useLayout } from "@/providers/LayoutProvider";
 
 export default function ExportScreen() {
   const { cards } = useCards();
   const { events } = useEvents();
+  const { showDesktopLayout } = useLayout();
   const [copiedFormat, setCopiedFormat] = useState<string | null>(null);
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
   const [showEventFilter, setShowEventFilter] = useState(false);
@@ -34,9 +36,7 @@ export default function ExportScreen() {
   const GOOGLE_SHEET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/edit`;
 
   const filteredCards = useMemo(() => {
-    if (selectedEventIds.length === 0) {
-      return cards;
-    }
+    if (selectedEventIds.length === 0) return cards;
     return cards.filter(card => {
       const eventId = card.eventId || 'non-categorized';
       return selectedEventIds.includes(eventId);
@@ -60,12 +60,10 @@ export default function ExportScreen() {
         card.createdAt ? new Date(card.createdAt).toLocaleString() : "",
       ];
     });
-
     const csvContent = [
       headers.join(","),
       ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(","))
     ].join("\n");
-
     return csvContent;
   };
 
@@ -92,7 +90,6 @@ export default function ExportScreen() {
     await Clipboard.setStringAsync(content);
     setCopiedFormat(format);
     setTimeout(() => setCopiedFormat(null), 2000);
-    
     Alert.alert(
       "Copied!",
       `${format.toUpperCase()} data copied to clipboard. You can now paste it into Google Sheets or any spreadsheet application.`,
@@ -114,42 +111,28 @@ export default function ExportScreen() {
       Alert.alert("Error", "Please enter an email address.");
       return;
     }
-
     if (!validateEmail(recipientEmail.trim())) {
       Alert.alert("Error", "Please enter a valid email address.");
       return;
     }
-
     if (Platform.OS === 'web') {
-      Alert.alert(
-        "Email Export",
-        "Email export is not available on web. Please use the copy options instead.",
-        [{ text: "OK" }]
-      );
+      Alert.alert("Email Export", "Email export is not available on web. Please use the copy options instead.", [{ text: "OK" }]);
       setShowEmailModal(false);
       return;
     }
-
     const isAvailable = await MailComposer.isAvailableAsync();
     if (!isAvailable) {
-      Alert.alert(
-        "Email Not Available",
-        "Email is not configured on this device. Please use the copy options instead.",
-        [{ text: "OK" }]
-      );
+      Alert.alert("Email Not Available", "Email is not configured on this device. Please use the copy options instead.", [{ text: "OK" }]);
       setShowEmailModal(false);
       return;
     }
-
     setIsSending(true);
     const csvContent = generateCSV();
     const fileName = `business-cards-${new Date().toISOString().split('T')[0]}.csv`;
-    
     try {
-      const exportDescription = selectedEventIds.length > 0 
-        ? `from ${selectedEventIds.length} selected event(s)` 
+      const exportDescription = selectedEventIds.length > 0
+        ? `from ${selectedEventIds.length} selected event(s)`
         : 'from all events';
-      
       await MailComposer.composeAsync({
         recipients: [recipientEmail.trim()],
         subject: `Business Cards Export - ${filteredCards.length} contacts ${exportDescription}`,
@@ -164,11 +147,7 @@ export default function ExportScreen() {
       setRecipientEmail('');
     } catch (error) {
       console.error('Email export error:', error);
-      Alert.alert(
-        "Export Error",
-        "Failed to create email. Please try the copy option instead.",
-        [{ text: "OK" }]
-      );
+      Alert.alert("Export Error", "Failed to create email. Please try the copy option instead.", [{ text: "OK" }]);
     } finally {
       setIsSending(false);
     }
@@ -179,9 +158,7 @@ export default function ExportScreen() {
       Alert.alert("No Cards", "There are no cards to export.");
       return;
     }
-
     setIsExportingToSheets(true);
-
     try {
       const rows = filteredCards.map(card => {
         const event = events.find(e => e.id === (card.eventId || 'non-categorized'));
@@ -198,21 +175,13 @@ export default function ExportScreen() {
           timestamp: card.createdAt ? new Date(card.createdAt).toLocaleString() : new Date().toLocaleString(),
         };
       });
-
       const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwYourScriptIdHere/exec';
-      
       await fetch(SCRIPT_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          sheetId: GOOGLE_SHEET_ID,
-          data: rows,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheetId: GOOGLE_SHEET_ID, data: rows }),
         mode: 'no-cors',
       });
-
       Alert.alert(
         "Export Initiated",
         `${filteredCards.length} cards have been sent to Google Sheets. Please check the sheet to verify the data was added.`,
@@ -238,8 +207,8 @@ export default function ExportScreen() {
   };
 
   const toggleEventSelection = (eventId: string) => {
-    setSelectedEventIds(prev => 
-      prev.includes(eventId) 
+    setSelectedEventIds(prev =>
+      prev.includes(eventId)
         ? prev.filter(id => id !== eventId)
         : [...prev, eventId]
     );
@@ -253,16 +222,16 @@ export default function ExportScreen() {
     setSelectedEventIds([]);
   };
 
-  const ExportOption = ({ 
-    title, 
-    description, 
-    icon, 
-    onPress, 
-    format 
-  }: { 
-    title: string; 
-    description: string; 
-    icon: React.ReactNode; 
+  const ExportOption = ({
+    title,
+    description,
+    icon,
+    onPress,
+    format
+  }: {
+    title: string;
+    description: string;
+    icon: React.ReactNode;
     onPress: () => void;
     format?: string;
   }) => (
@@ -279,128 +248,146 @@ export default function ExportScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.statsCard}>
-          <FileSpreadsheet size={32} color="#4128C5" />
-          <Text style={styles.statsTitle}>Export Your Data</Text>
-          <Text style={styles.statsCount}>
-            {selectedEventIds.length > 0 
-              ? `${filteredCards.length} of ${cards.length} business cards selected`
-              : `${cards.length} business cards`
-            }
-          </Text>
-          <Text style={styles.statsDescription}>
-            {selectedEventIds.length > 0 
-              ? `Exporting from ${selectedEventIds.length} selected event(s)`
-              : 'Export your scanned business cards to import into Google Sheets or other applications'
-            }
-          </Text>
+    <SafeAreaView style={styles.container} edges={showDesktopLayout ? [] : ['bottom']}>
+      {showDesktopLayout && (
+        <View style={styles.desktopHeader}>
+          <Text style={styles.desktopHeaderTitle}>Export Data</Text>
         </View>
+      )}
 
-        {cards.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>
-              No cards to export yet. Scan some business cards first!
-            </Text>
+      <ScrollView contentContainerStyle={[styles.content, showDesktopLayout && styles.contentDesktop]}>
+        <View style={showDesktopLayout ? styles.desktopGrid : undefined}>
+          <View style={showDesktopLayout ? styles.desktopMainCol : undefined}>
+            <View style={styles.statsCard}>
+              <FileSpreadsheet size={32} color="#4128C5" />
+              <Text style={styles.statsTitle}>Export Your Data</Text>
+              <Text style={styles.statsCount}>
+                {selectedEventIds.length > 0
+                  ? `${filteredCards.length} of ${cards.length} business cards selected`
+                  : `${cards.length} business cards`
+                }
+              </Text>
+              <Text style={styles.statsDescription}>
+                {selectedEventIds.length > 0
+                  ? `Exporting from ${selectedEventIds.length} selected event(s)`
+                  : 'Export your scanned business cards to import into Google Sheets or other applications'
+                }
+              </Text>
+            </View>
+
+            {cards.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>No cards to export yet. Scan some business cards first!</Text>
+              </View>
+            ) : (
+              <View style={styles.exportOptions}>
+                <Text style={styles.sectionTitle}>Export Formats</Text>
+                <ExportOption
+                  title="Copy as CSV"
+                  description={`Best for Google Sheets and Excel. ${filteredCards.length} cards will be exported.`}
+                  icon={<Copy size={24} color="#4128C5" />}
+                  onPress={() => handleCopyToClipboard('csv')}
+                  format="csv"
+                />
+                <ExportOption
+                  title="Email as CSV"
+                  description={`Send CSV file via email attachment. ${filteredCards.length} cards will be exported.`}
+                  icon={<Mail size={24} color="#4128C5" />}
+                  onPress={handleEmailExport}
+                />
+                <ExportOption
+                  title="Export to Google Sheets"
+                  description={`Send ${filteredCards.length} cards directly to the connected Google Sheet.`}
+                  icon={isExportingToSheets ? <CheckCircle size={24} color="#10B981" /> : <Cloud size={24} color="#4128C5" />}
+                  onPress={handleGoogleSheetsExport}
+                />
+                <TouchableOpacity
+                  style={styles.viewSheetLink}
+                  onPress={() => Linking.openURL(GOOGLE_SHEET_URL)}
+                  activeOpacity={0.7}
+                >
+                  <ExternalLink size={16} color="#4128C5" />
+                  <Text style={styles.viewSheetText}>View Google Sheet</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
-        ) : (
-          <View style={styles.exportOptions}>
-            <Text style={styles.sectionTitle}>Filter by Events</Text>
-            
-            {/* Event Filter Section */}
-            <View style={styles.filterSection}>
-              <TouchableOpacity 
-                style={styles.filterToggle} 
-                onPress={() => setShowEventFilter(!showEventFilter)}
-                activeOpacity={0.7}
-              >
-                <Calendar size={20} color="#4128C5" />
-                <Text style={styles.filterToggleText}>Select Events to Export</Text>
-                <Text style={styles.filterCount}>
-                  {selectedEventIds.length > 0 ? `${selectedEventIds.length} selected` : 'All events'}
-                </Text>
-              </TouchableOpacity>
-              
-              {showEventFilter && (
-                <View style={styles.eventFilterContainer}>
-                  <View style={styles.filterActions}>
-                    <TouchableOpacity onPress={selectAllEvents} style={styles.filterAction}>
-                      <Text style={styles.filterActionText}>Select All</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={clearEventSelection} style={styles.filterAction}>
-                      <Text style={styles.filterActionText}>Clear All</Text>
-                    </TouchableOpacity>
-                  </View>
-                  
-                  {events.map(event => {
-                    const isSelected = selectedEventIds.includes(event.id);
-                    const eventCards = cards.filter(card => (card.eventId || 'non-categorized') === event.id);
-                    
-                    return (
-                      <TouchableOpacity
-                        key={event.id}
-                        style={[styles.eventOption, isSelected && styles.eventOptionSelected]}
-                        onPress={() => toggleEventSelection(event.id)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={[styles.eventColor, { backgroundColor: event.color }]} />
-                        <View style={styles.eventInfo}>
-                          <Text style={styles.eventName}>{event.name}</Text>
-                          <Text style={styles.eventCardCount}>{eventCards.length} cards</Text>
-                        </View>
-                        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                          {isSelected && <Check size={16} color="#FFFFFF" />}
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
+
+          <View style={showDesktopLayout ? styles.desktopSideCol : undefined}>
+            {cards.length > 0 && (
+              <>
+                <Text style={styles.sectionTitle}>Filter by Events</Text>
+                <View style={styles.filterSection}>
+                  <TouchableOpacity
+                    style={styles.filterToggle}
+                    onPress={() => setShowEventFilter(!showEventFilter)}
+                    activeOpacity={0.7}
+                  >
+                    <Calendar size={20} color="#4128C5" />
+                    <Text style={styles.filterToggleText}>Select Events to Export</Text>
+                    <Text style={styles.filterCount}>
+                      {selectedEventIds.length > 0 ? `${selectedEventIds.length} selected` : 'All events'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {(showEventFilter || showDesktopLayout) && (
+                    <View style={styles.eventFilterContainer}>
+                      <View style={styles.filterActions}>
+                        <TouchableOpacity onPress={selectAllEvents} style={styles.filterAction}>
+                          <Text style={styles.filterActionText}>Select All</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={clearEventSelection} style={styles.filterAction}>
+                          <Text style={styles.filterActionText}>Clear All</Text>
+                        </TouchableOpacity>
+                      </View>
+                      {events.map(event => {
+                        const isSelected = selectedEventIds.includes(event.id);
+                        const eventCards = cards.filter(card => (card.eventId || 'non-categorized') === event.id);
+                        return (
+                          <TouchableOpacity
+                            key={event.id}
+                            style={[styles.eventOption, isSelected && styles.eventOptionSelected]}
+                            onPress={() => toggleEventSelection(event.id)}
+                            activeOpacity={0.7}
+                          >
+                            <View style={[styles.eventColor, { backgroundColor: event.color }]} />
+                            <View style={styles.eventInfo}>
+                              <Text style={styles.eventName}>{event.name}</Text>
+                              <Text style={styles.eventCardCount}>{eventCards.length} cards</Text>
+                            </View>
+                            <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                              {isSelected && <Check size={16} color="#FFFFFF" />}
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
 
-            <Text style={styles.sectionTitle}>Export Formats</Text>
-            
-            <ExportOption
-              title="Copy as CSV"
-              description={`Best for Google Sheets and Excel. ${filteredCards.length} cards will be exported.`}
-              icon={<Copy size={24} color="#4128C5" />}
-              onPress={() => handleCopyToClipboard('csv')}
-              format="csv"
-            />
+                {!showDesktopLayout && (
+                  <View style={styles.instructions}>
+                    <Text style={styles.instructionsTitle}>How to import to Google Sheets:</Text>
+                    <Text style={styles.instructionStep}>1. Copy data as CSV using the button above</Text>
+                    <Text style={styles.instructionStep}>2. Open Google Sheets in your browser</Text>
+                    <Text style={styles.instructionStep}>3. Select cell A1 and paste (Ctrl/Cmd + V)</Text>
+                    <Text style={styles.instructionStep}>4. Use &quot;Data → Split text to columns&quot; if needed</Text>
+                  </View>
+                )}
+              </>
+            )}
 
-            <ExportOption
-              title="Email as CSV"
-              description={`Send CSV file via email attachment. ${filteredCards.length} cards will be exported.`}
-              icon={<Mail size={24} color="#4128C5" />}
-              onPress={handleEmailExport}
-            />
-
-            <ExportOption
-              title="Export to Google Sheets"
-              description={`Send ${filteredCards.length} cards directly to the connected Google Sheet.`}
-              icon={isExportingToSheets ? <CheckCircle size={24} color="#10B981" /> : <Cloud size={24} color="#4128C5" />}
-              onPress={handleGoogleSheetsExport}
-            />
-
-            <TouchableOpacity 
-              style={styles.viewSheetLink} 
-              onPress={() => Linking.openURL(GOOGLE_SHEET_URL)}
-              activeOpacity={0.7}
-            >
-              <ExternalLink size={16} color="#4128C5" />
-              <Text style={styles.viewSheetText}>View Google Sheet</Text>
-            </TouchableOpacity>
-
-            <View style={styles.instructions}>
-              <Text style={styles.instructionsTitle}>How to import to Google Sheets:</Text>
-              <Text style={styles.instructionStep}>1. Copy data as CSV using the button above</Text>
-              <Text style={styles.instructionStep}>2. Open Google Sheets in your browser</Text>
-              <Text style={styles.instructionStep}>3. Select cell A1 and paste (Ctrl/Cmd + V)</Text>
-              <Text style={styles.instructionStep}>4. Use &quot;Data → Split text to columns&quot; if needed</Text>
-            </View>
+            {showDesktopLayout && cards.length > 0 && (
+              <View style={styles.instructions}>
+                <Text style={styles.instructionsTitle}>How to import to Google Sheets:</Text>
+                <Text style={styles.instructionStep}>1. Copy data as CSV using the button above</Text>
+                <Text style={styles.instructionStep}>2. Open Google Sheets in your browser</Text>
+                <Text style={styles.instructionStep}>3. Select cell A1 and paste (Ctrl/Cmd + V)</Text>
+                <Text style={styles.instructionStep}>4. Use &quot;Data → Split text to columns&quot; if needed</Text>
+              </View>
+            )}
           </View>
-        )}
+        </View>
       </ScrollView>
 
       <Modal
@@ -409,28 +396,23 @@ export default function ExportScreen() {
         animationType="fade"
         onRequestClose={() => setShowEmailModal(false)}
       >
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalOverlay}
         >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Send Export via Email</Text>
-              <TouchableOpacity 
-                onPress={() => {
-                  setShowEmailModal(false);
-                  setRecipientEmail('');
-                }}
+              <TouchableOpacity
+                onPress={() => { setShowEmailModal(false); setRecipientEmail(''); }}
                 style={styles.closeButton}
               >
                 <X size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
-            
             <Text style={styles.modalDescription}>
               Enter the email address where you would like to send the CSV export of {filteredCards.length} business cards.
             </Text>
-            
             <View style={styles.inputContainer}>
               <Mail size={20} color="#6B7280" style={styles.inputIcon} />
               <TextInput
@@ -445,19 +427,14 @@ export default function ExportScreen() {
                 autoFocus
               />
             </View>
-            
             <View style={styles.modalActions}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.cancelButton}
-                onPress={() => {
-                  setShowEmailModal(false);
-                  setRecipientEmail('');
-                }}
+                onPress={() => { setShowEmailModal(false); setRecipientEmail(''); }}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.sendButton, isSending && styles.sendButtonDisabled]}
                 onPress={sendEmailExport}
                 disabled={isSending}
@@ -480,8 +457,37 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F6FAFE",
   },
+  desktopHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 20,
+    paddingHorizontal: 32,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  desktopHeaderTitle: {
+    fontSize: 24,
+    fontWeight: "700" as const,
+    color: "#1F2937",
+  },
   content: {
     padding: 16,
+  },
+  contentDesktop: {
+    paddingHorizontal: 32,
+    paddingTop: 24,
+  },
+  desktopGrid: {
+    flexDirection: "row",
+    gap: 24,
+  },
+  desktopMainCol: {
+    flex: 2,
+  },
+  desktopSideCol: {
+    flex: 1,
   },
   statsCard: {
     backgroundColor: "#FFFFFF",
@@ -497,7 +503,7 @@ const styles = StyleSheet.create({
   },
   statsTitle: {
     fontSize: 24,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: "#1F2937",
     marginTop: 12,
     marginBottom: 8,
@@ -505,7 +511,7 @@ const styles = StyleSheet.create({
   statsCount: {
     fontSize: 18,
     color: "#4128C5",
-    fontWeight: "500",
+    fontWeight: "500" as const,
     marginBottom: 8,
   },
   statsDescription: {
@@ -519,7 +525,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: "#1F2937",
     marginBottom: 8,
   },
@@ -549,7 +555,7 @@ const styles = StyleSheet.create({
   },
   optionTitle: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: "#1F2937",
     marginBottom: 4,
   },
@@ -571,11 +577,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#F9FAFB",
     borderRadius: 12,
     padding: 16,
-    marginTop: 8,
+    marginTop: 16,
   },
   instructionsTitle: {
     fontSize: 15,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: "#1F2937",
     marginBottom: 12,
   },
@@ -602,7 +608,7 @@ const styles = StyleSheet.create({
   },
   filterToggleText: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: "#1F2937",
     marginLeft: 12,
     flex: 1,
@@ -633,7 +639,7 @@ const styles = StyleSheet.create({
   filterActionText: {
     fontSize: 14,
     color: "#4128C5",
-    fontWeight: "500",
+    fontWeight: "500" as const,
   },
   eventOption: {
     flexDirection: "row",
@@ -660,7 +666,7 @@ const styles = StyleSheet.create({
   },
   eventName: {
     fontSize: 15,
-    fontWeight: "500",
+    fontWeight: "500" as const,
     color: "#1F2937",
     marginBottom: 2,
   },
@@ -708,7 +714,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: '#1F2937',
   },
   closeButton: {
@@ -752,7 +758,7 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: '#6B7280',
   },
   sendButton: {
@@ -770,7 +776,7 @@ const styles = StyleSheet.create({
   },
   sendButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: '#FFFFFF',
   },
   viewSheetLink: {
@@ -783,6 +789,6 @@ const styles = StyleSheet.create({
   viewSheetText: {
     fontSize: 14,
     color: '#4128C5',
-    fontWeight: '500',
+    fontWeight: '500' as const,
   },
 });

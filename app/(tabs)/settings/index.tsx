@@ -12,10 +12,13 @@ import { useCards } from "@/providers/CardProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { useLayout } from "@/providers/LayoutProvider";
+import ModeToggle from "@/components/ModeToggle";
 
 export default function SettingsScreen() {
   const { cards, clearAllCards } = useCards();
   const { user, logout } = useAuth();
+  const { showDesktopLayout, isWeb } = useLayout();
 
   const handleLogout = () => {
     Alert.alert(
@@ -23,8 +26,8 @@ export default function SettingsScreen() {
       "Are you sure you want to sign out?",
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Sign Out", 
+        {
+          text: "Sign Out",
           style: "destructive",
           onPress: async () => {
             await logout();
@@ -40,8 +43,8 @@ export default function SettingsScreen() {
       `This will permanently delete all ${cards.length} scanned business cards. This action cannot be undone.`,
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete All", 
+        {
+          text: "Delete All",
           style: "destructive",
           onPress: clearAllCards
         }
@@ -49,21 +52,21 @@ export default function SettingsScreen() {
     );
   };
 
-  const SettingItem = ({ 
-    icon, 
-    title, 
-    description, 
-    onPress, 
-    destructive = false 
-  }: { 
-    icon: React.ReactNode; 
-    title: string; 
-    description?: string; 
+  const SettingItem = ({
+    icon,
+    title,
+    description,
+    onPress,
+    destructive = false
+  }: {
+    icon: React.ReactNode;
+    title: string;
+    description?: string;
     onPress?: () => void;
     destructive?: boolean;
   }) => (
-    <TouchableOpacity 
-      style={styles.settingItem} 
+    <TouchableOpacity
+      style={styles.settingItem}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
       disabled={!onPress}
@@ -84,86 +87,104 @@ export default function SettingsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        {user && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Account</Text>
-            <View style={styles.sectionContent}>
-              <View style={styles.userCard}>
-                <View style={styles.userAvatar}>
-                  <User size={24} color="#4F46E5" />
-                </View>
-                <View style={styles.userInfo}>
-                  <Text style={styles.userName}>{user.firstName} {user.lastName}</Text>
-                  <Text style={styles.userEmail}>{user.email}</Text>
+    <SafeAreaView style={styles.container} edges={showDesktopLayout ? [] : ['bottom']}>
+      {showDesktopLayout && (
+        <View style={styles.desktopHeader}>
+          <Text style={styles.desktopHeaderTitle}>Settings</Text>
+        </View>
+      )}
+
+      {isWeb && !showDesktopLayout && (
+        <View style={styles.mobileWebHeader}>
+          <ModeToggle />
+        </View>
+      )}
+
+      <ScrollView contentContainerStyle={[styles.content, showDesktopLayout && styles.contentDesktop]}>
+        <View style={showDesktopLayout ? styles.desktopGrid : undefined}>
+          <View style={showDesktopLayout ? styles.desktopColumn : undefined}>
+            {user && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Account</Text>
+                <View style={styles.sectionContent}>
+                  <View style={styles.userCard}>
+                    <View style={styles.userAvatar}>
+                      <User size={24} color="#4F46E5" />
+                    </View>
+                    <View style={styles.userInfo}>
+                      <Text style={styles.userName}>{user.firstName} {user.lastName}</Text>
+                      <Text style={styles.userEmail}>{user.email}</Text>
+                    </View>
+                  </View>
+                  <SettingItem
+                    icon={<LogOut size={20} color="#EF4444" />}
+                    title="Sign Out"
+                    description="Sign out of your account"
+                    onPress={handleLogout}
+                    destructive
+                  />
                 </View>
               </View>
-              <SettingItem
-                icon={<LogOut size={20} color="#EF4444" />}
-                title="Sign Out"
-                description="Sign out of your account"
-                onPress={handleLogout}
-                destructive
-              />
+            )}
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Administration</Text>
+              <View style={styles.sectionContent}>
+                <SettingItem
+                  icon={<Users size={20} color="#4F46E5" />}
+                  title="Admin Panel"
+                  description="View all user accounts"
+                  onPress={() => router.push('/admin' as any)}
+                />
+              </View>
             </View>
           </View>
-        )}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Administration</Text>
-          <View style={styles.sectionContent}>
-            <SettingItem
-              icon={<Users size={20} color="#4F46E5" />}
-              title="Admin Panel"
-              description="View all user accounts"
-              onPress={() => router.push('/admin' as any)}
-            />
+          <View style={showDesktopLayout ? styles.desktopColumn : undefined}>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Data Management</Text>
+              <View style={styles.sectionContent}>
+                <SettingItem
+                  icon={<FileSpreadsheet size={20} color="#4F46E5" />}
+                  title="Export Your Data"
+                  description="Export business cards to CSV or email"
+                  onPress={() => router.push('/export' as any)}
+                />
+                <SettingItem
+                  icon={<Trash2 size={20} color="#EF4444" />}
+                  title="Clear All Data"
+                  description={`Delete all ${cards.length} scanned business cards`}
+                  onPress={handleClearData}
+                  destructive
+                />
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Privacy</Text>
+              <View style={styles.sectionContent}>
+                <SettingItem
+                  icon={<Shield size={20} color="#4F46E5" />}
+                  title="Data Storage"
+                  description="All data is stored locally on your device"
+                />
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>About</Text>
+              <View style={styles.sectionContent}>
+                <SettingItem
+                  icon={<Info size={20} color="#4F46E5" />}
+                  title="Business Card Scanner"
+                  description="Version 1.0.0"
+                />
+              </View>
+            </View>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Data Management</Text>
-          <View style={styles.sectionContent}>
-            <SettingItem
-              icon={<FileSpreadsheet size={20} color="#4F46E5" />}
-              title="Export Your Data"
-              description="Export business cards to CSV or email"
-              onPress={() => router.push('/export' as any)}
-            />
-            <SettingItem
-              icon={<Trash2 size={20} color="#EF4444" />}
-              title="Clear All Data"
-              description={`Delete all ${cards.length} scanned business cards`}
-              onPress={handleClearData}
-              destructive
-            />
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Privacy</Text>
-          <View style={styles.sectionContent}>
-            <SettingItem
-              icon={<Shield size={20} color="#4F46E5" />}
-              title="Data Storage"
-              description="All data is stored locally on your device"
-            />
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
-          <View style={styles.sectionContent}>
-            <SettingItem
-              icon={<Info size={20} color="#4F46E5" />}
-              title="Business Card Scanner"
-              description="Version 1.0.0"
-            />
-          </View>
-        </View>
-
-        <View style={styles.infoCard}>
+        <View style={[styles.infoCard, showDesktopLayout && styles.infoCardDesktop]}>
           <Text style={styles.infoTitle}>How it works</Text>
           <Text style={styles.infoText}>
             1. Take a photo of a business card or name badge{'\n'}
@@ -182,15 +203,48 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8f9fa",
   },
+  desktopHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 20,
+    paddingHorizontal: 32,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  desktopHeaderTitle: {
+    fontSize: 24,
+    fontWeight: "700" as const,
+    color: "#1F2937",
+  },
+  mobileWebHeader: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
   content: {
     padding: 16,
+  },
+  contentDesktop: {
+    paddingHorizontal: 32,
+    paddingTop: 24,
+  },
+  desktopGrid: {
+    flexDirection: "row",
+    gap: 24,
+  },
+  desktopColumn: {
+    flex: 1,
   },
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: "#6B7280",
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -231,7 +285,7 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     fontSize: 16,
-    fontWeight: "500",
+    fontWeight: "500" as const,
     color: "#1F2937",
     marginBottom: 2,
   },
@@ -248,9 +302,12 @@ const styles = StyleSheet.create({
     padding: 16,
     marginTop: 8,
   },
+  infoCardDesktop: {
+    maxWidth: 600,
+  },
   infoTitle: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: "#4F46E5",
     marginBottom: 8,
   },
