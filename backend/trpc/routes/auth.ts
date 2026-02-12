@@ -11,8 +11,13 @@ import {
   StoredUser,
 } from "@/backend/db";
 
-const generateToken = (userId: string): string => {
-  return `${userId}_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+const generateToken = (): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  for (let i = 0; i < 40; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
 };
 
 export const authRouter = createTRPCRouter({
@@ -35,7 +40,7 @@ export const authRouter = createTRPCRouter({
       const userId = `user_${Date.now()}_${Math.random().toString(36).substring(2)}`;
       const user: StoredUser = {
         id: userId,
-        email: email.toLowerCase(),
+        email: email.toLowerCase().trim(),
         firstName,
         lastName,
         password,
@@ -48,8 +53,9 @@ export const authRouter = createTRPCRouter({
         throw new Error("Failed to save user to database");
       }
       
-      const token = generateToken(userId);
-      await saveSession(token, { userId, createdAt: new Date().toISOString() });
+      const token = generateToken();
+      const sessionSaved = await saveSession(token, { userId, createdAt: new Date().toISOString() });
+      console.log("Session saved for registration:", sessionSaved);
       
       console.log("User registered successfully:", { id: userId, email, firstName, lastName });
       
@@ -73,11 +79,12 @@ export const authRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const { email, password } = input;
       
-      console.log("Looking up user by email:", email);
-      const user = await getUserByEmail(email);
+      const normalizedEmail = email.toLowerCase().trim();
+      console.log("Looking up user by email:", normalizedEmail);
+      const user = await getUserByEmail(normalizedEmail);
       
       if (!user) {
-        console.log("User not found for email:", email);
+        console.log("User not found for email:", normalizedEmail);
         throw new Error("Invalid email or password");
       }
       
@@ -86,8 +93,9 @@ export const authRouter = createTRPCRouter({
         throw new Error("Invalid email or password");
       }
       
-      const token = generateToken(user.id);
-      await saveSession(token, { userId: user.id, createdAt: new Date().toISOString() });
+      const token = generateToken();
+      const sessionSaved = await saveSession(token, { userId: user.id, createdAt: new Date().toISOString() });
+      console.log("Session saved for login:", sessionSaved);
       
       console.log("User logged in successfully:", { id: user.id, email: user.email });
       

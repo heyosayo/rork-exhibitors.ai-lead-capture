@@ -39,8 +39,28 @@ async function dbRequest<T>(
       return { success: false, error: errorText };
     }
 
-    const data = await response.json();
-    return { success: true, data };
+    const contentType = response.headers.get('content-type');
+    const text = await response.text();
+    
+    if (text && contentType?.includes('application/json')) {
+      try {
+        const data = JSON.parse(text);
+        return { success: true, data };
+      } catch {
+        console.log('DB response not JSON, treating as success. Body:', text.substring(0, 200));
+        return { success: true, data: undefined };
+      }
+    } else if (text) {
+      try {
+        const data = JSON.parse(text);
+        return { success: true, data };
+      } catch {
+        console.log('DB response not parseable, treating as success for', method, key);
+        return { success: true, data: undefined };
+      }
+    }
+    
+    return { success: true, data: undefined };
   } catch (error) {
     console.error("DB request error:", error);
     return { success: false, error: String(error) };
@@ -103,7 +123,18 @@ export async function getUserByEmail(email: string): Promise<StoredUser | null> 
   console.log("getUserByEmail - looking up email:", emailKey);
   const index = await getUsersIndex();
   console.log("getUserByEmail - index emailToId keys:", Object.keys(index.emailToId));
-  const userId = index.emailToId[emailKey];
+  
+  let userId = index.emailToId[emailKey];
+  if (!userId) {
+    const normalizedKeys = Object.keys(index.emailToId);
+    for (const key of normalizedKeys) {
+      if (key.toLowerCase().trim() === emailKey) {
+        userId = index.emailToId[key];
+        break;
+      }
+    }
+  }
+  
   console.log("getUserByEmail - found userId:", userId);
   if (!userId) return null;
   return getUserById(userId);
@@ -111,23 +142,36 @@ export async function getUserByEmail(email: string): Promise<StoredUser | null> 
 
 export async function saveUser(user: StoredUser): Promise<boolean> {
   const key = user.id.startsWith('user_') ? user.id : `user_${user.id}`;
-  console.log("saveUser - saving with key:", key);
+  console.log("saveUser - saving with key:", key, "email:", user.email);
+  
   const saved = await dbSet(key, user);
   if (!saved) {
-    console.error("saveUser - failed to save user data");
+    console.error("saveUser - failed to save user data for key:", key);
     return false;
   }
+  console.log("saveUser - user data saved successfully for key:", key);
+  
+  const verification = await dbGet<StoredUser>(key);
+  console.log("saveUser - verification read back:", verification ? "success" : "FAILED", verification?.email);
   
   const index = await getUsersIndex();
-  console.log("saveUser - current index:", JSON.stringify(index));
+  console.log("saveUser - current index before update:", JSON.stringify(index));
+  
   if (!index.userIds.includes(user.id)) {
     index.userIds.push(user.id);
   }
   const emailKey = user.email.toLowerCase().trim();
   index.emailToId[emailKey] = user.id;
   
+  console.log("saveUser - saving index with emailKey:", emailKey, "userId:", user.id);
   const indexSaved = await saveUsersIndex(index);
-  console.log("saveUser - index saved:", indexSaved, "emailKey:", emailKey);
+  console.log("saveUser - index saved:", indexSaved);
+  
+  if (indexSaved) {
+    const indexVerification = await getUsersIndex();
+    console.log("saveUser - index verification:", JSON.stringify(indexVerification));
+  }
+  
   return indexSaved;
 }
 
@@ -148,13 +192,22 @@ export async function getAllUsers(): Promise<StoredUser[]> {
 }
 
 export async function getSession(token: string): Promise<StoredSession | null> {
-  return dbGet<StoredSession>(`session_${token}`);
+  const key = `session_${token.substring(0, 50)}`;
+  console.log("getSession - looking up key:", key);
+  const session = await dbGet<StoredSession>(key);
+  console.log("getSession - found:", session ? "yes" : "no");
+  return session;
 }
 
 export async function saveSession(token: string, session: StoredSession): Promise<boolean> {
-  return dbSet(`session_${token}`, session);
+  const key = `session_${token.substring(0, 50)}`;
+  console.log("saveSession - saving session with key:", key);
+  const result = await dbSet(key, session);
+  console.log("saveSession - save result:", result);
+  return result;
 }
 
 export async function deleteSession(token: string): Promise<boolean> {
-  return dbDelete(`session_${token}`);
+  const key = `session_${token.substring(0, 50)}`;
+  return dbDelete(key);
 }
