@@ -195,7 +195,7 @@ export default function HomeScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={showDesktopLayout ? [] : ['bottom']}>
+    <SafeAreaView style={styles.container} edges={showDesktopLayout ? [] : ['top', 'bottom']}>
       <View style={[styles.header, showDesktopLayout && styles.headerDesktop]}>
         <Text style={[styles.brandText, showDesktopLayout && styles.brandTextDesktop]}>
           {showDesktopLayout ? "Business Cards" : "Exhibitor Tech"}

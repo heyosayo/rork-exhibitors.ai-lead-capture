@@ -9,12 +9,7 @@ export default function HomeLayout() {
       <Stack.Screen 
         name="index" 
         options={{ 
-          headerShown: !showDesktopLayout,
-          title: "Business Cards",
-          headerStyle: {
-            backgroundColor: '#f8f9fa',
-          },
-          headerTintColor: '#1F2937',
+          headerShown: false,
         }} 
       />
     </Stack>
