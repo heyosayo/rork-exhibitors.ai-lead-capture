@@ -1,16 +1,35 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import createContextHook from "@nkzw/create-context-hook";
-import { trpcClient, setAuthToken } from "@/lib/trpc";
 
 const AUTH_TOKEN_KEY = "auth_token";
 const USER_KEY = "auth_user";
+const USERS_DB_KEY = "users_db";
 
 export interface User {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
+}
+
+interface StoredUser extends User {
+  password: string;
+}
+
+async function getStoredUsers(): Promise<StoredUser[]> {
+  try {
+    const raw = await AsyncStorage.getItem(USERS_DB_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as StoredUser[];
+  } catch (error) {
+    console.error("Failed to read users DB:", error);
+    return [];
+  }
+}
+
+async function saveStoredUsers(users: StoredUser[]): Promise<void> {
+  await AsyncStorage.setItem(USERS_DB_KEY, JSON.stringify(users));
 }
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
@@ -27,23 +46,10 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       ]);
 
       if (storedToken && storedUser) {
-        console.log("Found stored auth, validating...");
-        setAuthToken(storedToken);
-        
-        try {
-          const response = await trpcClient.auth.getMe.query();
-          if (response.user) {
-            console.log("Auth validated, user:", response.user);
-            setUser(response.user);
-            setIsAuthenticated(true);
-          } else {
-            console.log("Token invalid, clearing stored auth");
-            await clearStoredAuth();
-          }
-        } catch (error) {
-          console.error("Error validating token:", error);
-          await clearStoredAuth();
-        }
+        console.log("Found stored auth, restoring session");
+        const parsed = JSON.parse(storedUser) as User;
+        setUser(parsed);
+        setIsAuthenticated(true);
       } else {
         console.log("No stored auth found");
       }
@@ -56,7 +62,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const clearStoredAuth = async () => {
     await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, USER_KEY]);
-    setAuthToken(null);
     setUser(null);
     setIsAuthenticated(false);
   };
@@ -68,24 +73,41 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const register = useCallback(async (firstName: string, lastName: string, email: string, password: string) => {
     try {
       console.log("Registering user:", { firstName, lastName, email });
-      const response = await trpcClient.auth.register.mutate({
-        firstName,
-        lastName,
-        email,
-        password,
-      });
+      const normalizedEmail = email.toLowerCase().trim();
 
-      if (response.success && response.user && response.token) {
-        console.log("Registration successful");
-        setAuthToken(response.token);
-        await AsyncStorage.setItem(AUTH_TOKEN_KEY, response.token);
-        await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
-        setUser(response.user);
-        setIsAuthenticated(true);
-        return { success: true };
+      const existingUsers = await getStoredUsers();
+      const duplicate = existingUsers.find(u => u.email === normalizedEmail);
+      if (duplicate) {
+        return { success: false, error: "An account with this email already exists" };
       }
-      
-      return { success: false, error: "Registration failed" };
+
+      const userId = `user_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+      const newUser: StoredUser = {
+        id: userId,
+        email: normalizedEmail,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        password,
+      };
+
+      existingUsers.push(newUser);
+      await saveStoredUsers(existingUsers);
+
+      const token = `local_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+      const sessionUser: User = {
+        id: newUser.id,
+        email: newUser.email,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+      };
+
+      await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
+      setUser(sessionUser);
+      setIsAuthenticated(true);
+
+      console.log("Registration successful:", sessionUser.id);
+      return { success: true };
     } catch (error: any) {
       console.error("Registration error:", error);
       return { success: false, error: error.message || "Registration failed" };
@@ -95,22 +117,37 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const login = useCallback(async (email: string, password: string) => {
     try {
       console.log("Logging in user:", email);
-      const response = await trpcClient.auth.login.mutate({
-        email,
-        password,
-      });
+      const normalizedEmail = email.toLowerCase().trim();
 
-      if (response.success && response.user && response.token) {
-        console.log("Login successful");
-        setAuthToken(response.token);
-        await AsyncStorage.setItem(AUTH_TOKEN_KEY, response.token);
-        await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
-        setUser(response.user);
-        setIsAuthenticated(true);
-        return { success: true };
+      const existingUsers = await getStoredUsers();
+      console.log("Found stored users:", existingUsers.length);
+
+      const found = existingUsers.find(u => u.email === normalizedEmail);
+      if (!found) {
+        console.log("User not found for email:", normalizedEmail);
+        return { success: false, error: "Invalid email or password" };
       }
-      
-      return { success: false, error: "Login failed" };
+
+      if (found.password !== password) {
+        console.log("Password mismatch for user:", found.id);
+        return { success: false, error: "Invalid email or password" };
+      }
+
+      const token = `local_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+      const sessionUser: User = {
+        id: found.id,
+        email: found.email,
+        firstName: found.firstName,
+        lastName: found.lastName,
+      };
+
+      await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(sessionUser));
+      setUser(sessionUser);
+      setIsAuthenticated(true);
+
+      console.log("Login successful:", sessionUser.id);
+      return { success: true };
     } catch (error: any) {
       console.error("Login error:", error);
       return { success: false, error: error.message || "Login failed" };
@@ -118,14 +155,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   }, []);
 
   const logout = useCallback(async () => {
-    try {
-      console.log("Logging out user");
-      await trpcClient.auth.logout.mutate();
-    } catch (error) {
-      console.error("Logout error:", error);
-    } finally {
-      await clearStoredAuth();
-    }
+    console.log("Logging out user");
+    await clearStoredAuth();
   }, []);
 
   return useMemo(() => ({

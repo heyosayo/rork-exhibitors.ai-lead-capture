@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Users, Mail, Calendar, ChevronLeft, UserCircle } from "lucide-react-native";
 import { router } from "expo-router";
-import { trpc } from "@/lib/trpc";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface UserAccount {
   id: string;
@@ -21,16 +21,42 @@ interface UserAccount {
   createdAt: Date;
 }
 
+const USERS_DB_KEY = "users_db";
+
 export default function AdminScreen() {
   const [refreshing, setRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [data, setData] = useState<{ users: UserAccount[]; total: number } | null>(null);
 
-  const { data, isLoading, refetch } = trpc.auth.getAllUsers.useQuery();
+  const fetchUsers = useCallback(async () => {
+    try {
+      const raw = await AsyncStorage.getItem(USERS_DB_KEY);
+      const users = raw ? JSON.parse(raw) : [];
+      const mapped: UserAccount[] = users.map((u: any) => ({
+        id: u.id,
+        email: u.email,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        createdAt: new Date(),
+      }));
+      setData({ users: mapped, total: mapped.length });
+    } catch (error) {
+      console.error("Failed to load users:", error);
+      setData({ users: [], total: 0 });
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
+    await fetchUsers();
     setRefreshing(false);
-  }, [refetch]);
+  }, [fetchUsers]);
 
   const formatDate = (date: Date | string) => {
     const d = new Date(date);
