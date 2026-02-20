@@ -11,7 +11,6 @@ import {
   TextInput,
   Modal,
   KeyboardAvoidingView,
-  Platform as RNPlatform,
 } from "react-native";
 import { router } from "expo-router";
 import {
@@ -75,7 +74,7 @@ const CreateEventModal = memo(function CreateEventModal({
         </View>
         <KeyboardAvoidingView
           style={styles.modalContent}
-          behavior={RNPlatform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Event Name</Text>

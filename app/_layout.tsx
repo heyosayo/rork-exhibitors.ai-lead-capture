@@ -87,6 +87,13 @@ function RootLayoutNav() {
           headerShown: false,
         }} 
       />
+      <Stack.Screen 
+        name="manual-entry" 
+        options={{ 
+          presentation: "modal",
+          headerShown: false,
+        }} 
+      />
     </Stack>
   );
 }
