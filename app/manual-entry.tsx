@@ -11,9 +11,10 @@ import {
   ScrollView,
 } from "react-native";
 import { router } from "expo-router";
-import { X, CheckCircle, User, Calendar, ChevronDown, Plus } from "lucide-react-native";
+import { X, CheckCircle, User, Calendar, ChevronDown, Plus, Tag } from "lucide-react-native";
 import { useCards } from "@/providers/CardProvider";
 import { useEvents } from "@/providers/EventProvider";
+import { useLeadCategories } from "@/providers/LeadCategoryProvider";
 import { BusinessCard } from "@/types/card";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -48,12 +49,15 @@ function FormField({ label, value, onChangeText, keyboardType, multiline, autoCa
 export default function ManualEntryScreen() {
   const { addCard } = useCards();
   const { events, addEvent, getNonCategorizedEvent } = useEvents();
+  const { categories } = useLeadCategories();
   const [formData, setFormData] = useState<Partial<BusinessCard>>({
     name: "", title: "", company: "", email: "",
     officePhone: "", cellPhone: "", faxPhone: "",
     website: "", linkedinUrl: "", notes: "",
     eventId: null, profilePhotoUrl: null,
   });
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showEventPicker, setShowEventPicker] = useState(false);
   const [showNewEventForm, setShowNewEventForm] = useState(false);
   const [newEventName, setNewEventName] = useState("");
@@ -83,7 +87,7 @@ export default function ManualEntryScreen() {
       eventId: formData.eventId || null,
       profilePhotoUrl: null,
       phone: null,
-      categoryIds: [],
+      categoryIds: selectedCategoryIds,
     };
     addCard(newCard);
     Alert.alert("Success", "Business card saved successfully!", [
@@ -175,6 +179,64 @@ export default function ManualEntryScreen() {
               )}
             </View>
 
+            <View style={s.inputGroup}>
+              <Text style={s.inputLabel}>Lead Categories</Text>
+              <TouchableOpacity style={s.eventSelector} onPress={() => setShowCategoryPicker(!showCategoryPicker)}>
+                <Tag size={20} color="#6B7280" />
+                <Text style={[s.eventSelectorText, selectedCategoryIds.length === 0 && { color: '#9CA3AF' }]}>
+                  {selectedCategoryIds.length === 0
+                    ? "Select categories"
+                    : categories.filter(c => selectedCategoryIds.includes(c.id)).map(c => c.title).join(", ")}
+                </Text>
+                <ChevronDown size={20} color="#6B7280" />
+              </TouchableOpacity>
+              {selectedCategoryIds.length > 0 && (
+                <View style={s.selectedCategoriesRow}>
+                  {categories.filter(c => selectedCategoryIds.includes(c.id)).map(cat => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[s.categoryChip, { backgroundColor: cat.color + '18', borderColor: cat.color }]}
+                      onPress={() => setSelectedCategoryIds(prev => prev.filter(id => id !== cat.id))}
+                    >
+                      <View style={[s.categoryDot, { backgroundColor: cat.color }]} />
+                      <Text style={[s.categoryChipText, { color: cat.color }]}>{cat.title}</Text>
+                      <X size={14} color={cat.color} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+              {showCategoryPicker && (
+                <View style={s.eventPicker}>
+                  {categories.length === 0 ? (
+                    <View style={s.eventOption}>
+                      <Text style={[s.eventOptionText, { color: '#9CA3AF', fontStyle: 'italic' as const }]}>No categories created yet</Text>
+                    </View>
+                  ) : (
+                    categories.map(cat => {
+                      const isSelected = selectedCategoryIds.includes(cat.id);
+                      return (
+                        <TouchableOpacity
+                          key={cat.id}
+                          style={[s.eventOption, isSelected && { backgroundColor: cat.color + '0D' }]}
+                          onPress={() => {
+                            setSelectedCategoryIds(prev =>
+                              isSelected ? prev.filter(id => id !== cat.id) : [...prev, cat.id]
+                            );
+                          }}
+                        >
+                          <View style={s.categoryOptionRow}>
+                            <View style={[s.categoryDot, { backgroundColor: cat.color }]} />
+                            <Text style={[s.eventOptionText, isSelected && { color: cat.color, fontWeight: '600' as const }]}>{cat.title}</Text>
+                          </View>
+                          {isSelected && <CheckCircle size={18} color={cat.color} />}
+                        </TouchableOpacity>
+                      );
+                    })
+                  )}
+                </View>
+              )}
+            </View>
+
             <FormField label="Notes" value={formData.notes || ""} onChangeText={(t) => updateField("notes", t)} multiline />
 
             {showNewEventForm && (
@@ -233,4 +295,9 @@ const s = StyleSheet.create({
   selectedEventText: { color: "#4128C5", fontWeight: "600" },
   newEventForm: { backgroundColor: "#F8F9FF", borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: "#E0E7FF" },
   newEventTitle: { fontSize: 16, fontWeight: "600", color: "#1F2937", marginBottom: 16 },
+  selectedCategoriesRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
+  categoryChip: { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, gap: 6 },
+  categoryChipText: { fontSize: 13, fontWeight: "500" },
+  categoryDot: { width: 8, height: 8, borderRadius: 4 },
+  categoryOptionRow: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
 });
