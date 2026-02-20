@@ -15,12 +15,14 @@ import {
 import { router } from "expo-router";
 import { Plus, Search, Trash2, User, Building, Mail, Phone, CreditCard, Clock } from "lucide-react-native";
 import { useCards } from "@/providers/CardProvider";
+import { useLeadCategories } from "@/providers/LeadCategoryProvider";
 import { BusinessCard } from "@/types/card";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 
 export default function HomeScreen() {
   const { cards, deleteCard, refetch } = useCards();
+  const { getCategoriesForCard } = useLeadCategories();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -109,6 +111,16 @@ export default function HomeScreen() {
             )}
           </View>
         </View>
+
+        {(item.categoryIds?.length ?? 0) > 0 && (
+          <View style={styles.categoryRow}>
+            {getCategoriesForCard(item.categoryIds || []).map(cat => (
+              <View key={cat.id} style={[styles.categoryBadge, { backgroundColor: cat.color + '20' }]}> 
+                <Text style={[styles.categoryBadgeText, { color: cat.color }]}>{cat.title}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         <View style={styles.cardDetails}>
           {item.email && (
@@ -345,6 +357,21 @@ const styles = StyleSheet.create({
   cardCompany: {
     fontSize: 14,
     color: "#4B5563",
+  },
+  categoryRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 10,
+  },
+  categoryBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  categoryBadgeText: {
+    fontSize: 11,
+    fontWeight: "600" as const,
   },
   cardDetails: {
     gap: 6,

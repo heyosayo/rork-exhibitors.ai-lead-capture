@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { CardProvider } from "@/providers/CardProvider";
 import { EventProvider } from "@/providers/EventProvider";
 import { AuthProvider, useAuth } from "@/providers/AuthProvider";
+import { LeadCategoryProvider } from "@/providers/LeadCategoryProvider";
 
 import { trpc, trpcClient } from "@/lib/trpc";
 
@@ -94,6 +95,13 @@ function RootLayoutNav() {
           headerShown: false,
         }} 
       />
+      <Stack.Screen 
+        name="lead-categories" 
+        options={{ 
+          title: "Lead Categories",
+          headerStyle: { backgroundColor: '#f8f9fa' },
+        }} 
+      />
     </Stack>
   );
 }
@@ -121,9 +129,11 @@ export default function RootLayout() {
           <AuthProvider>
             <AuthGate>
               <EventProvider>
+                <LeadCategoryProvider>
                   <CardProvider>
                     <RootLayoutNav />
                   </CardProvider>
+                </LeadCategoryProvider>
               </EventProvider>
             </AuthGate>
           </AuthProvider>

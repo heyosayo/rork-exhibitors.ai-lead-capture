@@ -13,9 +13,10 @@ import {
   Image,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { Edit2, Save, X, Mail, Phone, Globe, Building, User, Calendar, ChevronDown, Clock, Search } from "lucide-react-native";
+import { Edit2, Save, X, Mail, Phone, Globe, Building, User, Calendar, ChevronDown, Clock, Search, Tag, Plus } from "lucide-react-native";
 import { useCards } from "@/providers/CardProvider";
 import { useEvents } from "@/providers/EventProvider";
+import { useLeadCategories } from "@/providers/LeadCategoryProvider";
 import { BusinessCard } from "@/types/card";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -23,10 +24,12 @@ export default function CardDetailScreen() {
   const { id } = useLocalSearchParams();
   const { cards, updateCard, searchMissingContactInfo } = useCards();
   const { events, getEventById, getNonCategorizedEvent } = useEvents();
+  const { categories, getCategoriesForCard } = useLeadCategories();
   const card = cards.find(c => c.id === id);
   const [isEditing, setIsEditing] = useState(false);
   const [editedCard, setEditedCard] = useState<Partial<BusinessCard>>(card || {});
   const [showEventPicker, setShowEventPicker] = useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [isSearchingInfo, setIsSearchingInfo] = useState(false);
 
   if (!card) {
@@ -101,6 +104,25 @@ export default function CardDetailScreen() {
     setEditedCard(prev => ({ ...prev, eventId }));
     setShowEventPicker(false);
   };
+
+  const toggleCategory = (categoryId: string) => {
+    const currentIds = editedCard.categoryIds || card?.categoryIds || [];
+    const newIds = currentIds.includes(categoryId)
+      ? currentIds.filter((id: string) => id !== categoryId)
+      : [...currentIds, categoryId];
+    setEditedCard(prev => ({ ...prev, categoryIds: newIds }));
+  };
+
+  const toggleCategoryDirect = (categoryId: string) => {
+    if (!card) return;
+    const currentIds = card.categoryIds || [];
+    const newIds = currentIds.includes(categoryId)
+      ? currentIds.filter((cid: string) => cid !== categoryId)
+      : [...currentIds, categoryId];
+    updateCard(id as string, { categoryIds: newIds });
+  };
+
+  const cardCategories = getCategoriesForCard(card?.categoryIds || []);
 
   const getSelectedEventName = () => {
     const eventId = isEditing ? editedCard.eventId : card.eventId;
@@ -193,6 +215,67 @@ export default function CardDetailScreen() {
                 <View style={[s.eventBadge, { backgroundColor: (getCurrentEvent()?.color || '#6B7280') + '20' }]}>
                   <Text style={[s.eventBadgeText, { color: getCurrentEvent()?.color || '#6B7280' }]}>{getSelectedEventName()}</Text>
                 </View>
+              </View>
+            )}
+          </View>
+
+          <View style={s.eventCard}>
+            <View style={s.eventHeader}><Tag size={20} color="#6B7280" /><Text style={s.eventTitle}>Lead Categories</Text></View>
+            <View style={s.categoryBadgesWrap}>
+              {(isEditing ? getCategoriesForCard(editedCard.categoryIds || card?.categoryIds || []) : cardCategories).map(cat => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[s.catBadge, { backgroundColor: cat.color + '20' }]}
+                  onPress={() => isEditing ? toggleCategory(cat.id) : toggleCategoryDirect(cat.id)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[s.catBadgeDot, { backgroundColor: cat.color }]} />
+                  <Text style={[s.catBadgeText, { color: cat.color }]}>{cat.title}</Text>
+                  {isEditing && <X size={12} color={cat.color} />}
+                </TouchableOpacity>
+              ))}
+              {(isEditing || cardCategories.length === 0) && (
+                <TouchableOpacity
+                  style={s.addCatBtn}
+                  onPress={() => setShowCategoryPicker(!showCategoryPicker)}
+                  activeOpacity={0.7}
+                >
+                  <Plus size={14} color="#6B7280" />
+                  <Text style={s.addCatBtnText}>Add</Text>
+                </TouchableOpacity>
+              )}
+              {!isEditing && cardCategories.length === 0 && (
+                <Text style={{ fontSize: 14, color: '#9CA3AF' }}>No categories assigned</Text>
+              )}
+            </View>
+            {showCategoryPicker && (
+              <View style={s.catPickerWrap}>
+                {categories.filter(c => {
+                  const ids = isEditing ? (editedCard.categoryIds || card?.categoryIds || []) : (card?.categoryIds || []);
+                  return !ids.includes(c.id);
+                }).map(cat => (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={s.catPickerItem}
+                    onPress={() => {
+                      if (isEditing) {
+                        toggleCategory(cat.id);
+                      } else {
+                        toggleCategoryDirect(cat.id);
+                      }
+                      setShowCategoryPicker(false);
+                    }}
+                  >
+                    <View style={[s.catBadgeDot, { backgroundColor: cat.color }]} />
+                    <Text style={s.catPickerText}>{cat.title}</Text>
+                  </TouchableOpacity>
+                ))}
+                {categories.filter(c => {
+                  const ids = isEditing ? (editedCard.categoryIds || card?.categoryIds || []) : (card?.categoryIds || []);
+                  return !ids.includes(c.id);
+                }).length === 0 && (
+                  <Text style={{ fontSize: 14, color: '#9CA3AF', padding: 12 }}>All categories assigned</Text>
+                )}
               </View>
             )}
           </View>
@@ -300,4 +383,13 @@ const s = StyleSheet.create({
   cancelBtnText: { color: "#6B7280", fontSize: 16, fontWeight: "600" },
   searchBtn: { backgroundColor: "#F8FAFC", flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 16, borderRadius: 12, gap: 8, borderWidth: 1, borderColor: "#E2E8F0" },
   searchBtnText: { color: "#4F46E5", fontSize: 16, fontWeight: "600" },
+  categoryBadgesWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" },
+  catBadge: { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, gap: 6 },
+  catBadgeDot: { width: 8, height: 8, borderRadius: 4 },
+  catBadgeText: { fontSize: 13, fontWeight: "500" as const },
+  addCatBtn: { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: "#E5E7EB", borderStyle: "dashed" as const, gap: 4 },
+  addCatBtnText: { fontSize: 13, color: "#6B7280" },
+  catPickerWrap: { marginTop: 12, backgroundColor: "#F9FAFB", borderRadius: 10, borderWidth: 1, borderColor: "#E5E7EB", overflow: "hidden" as const },
+  catPickerItem: { flexDirection: "row", alignItems: "center", padding: 12, gap: 10, borderBottomWidth: 1, borderBottomColor: "#F3F4F6" },
+  catPickerText: { fontSize: 15, color: "#1F2937" },
 });

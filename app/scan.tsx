@@ -164,6 +164,7 @@ export default function ScanScreen() {
       eventId: selectedEventId,
       createdAt: new Date().toISOString(),
       profilePhotoUrl: null,
+      categoryIds: [],
     } as BusinessCard);
     Alert.alert("Success", "Business card saved successfully!", [
       { text: "OK", onPress: () => router.back() }
@@ -199,6 +200,7 @@ export default function ScanScreen() {
         eventId: selectedEventId,
         createdAt: new Date().toISOString(),
         profilePhotoUrl: null,
+        categoryIds: [],
       } as BusinessCard);
     }
     setImage(null);

@@ -7,7 +7,7 @@ import {
   Alert,
   ScrollView,
 } from "react-native";
-import { Trash2, Info, Shield, ChevronRight, FileSpreadsheet, LogOut, User, Users } from "lucide-react-native";
+import { Trash2, Info, Shield, ChevronRight, FileSpreadsheet, LogOut, User, Users, Tag } from "lucide-react-native";
 import { useCards } from "@/providers/CardProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -128,6 +128,18 @@ export default function SettingsScreen() {
           </View>
 
           <View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Lead Management</Text>
+              <View style={styles.sectionContent}>
+                <SettingItem
+                  icon={<Tag size={20} color="#4F46E5" />}
+                  title="Lead Categories"
+                  description="Create and manage lead categories"
+                  onPress={() => router.push('/lead-categories' as any)}
+                />
+              </View>
+            </View>
+
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Data Management</Text>
               <View style={styles.sectionContent}>

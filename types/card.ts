@@ -15,6 +15,14 @@ export interface BusinessCard {
   createdAt: string;
   linkedinUrl: string | null;
   profilePhotoUrl: string | null;
+  categoryIds: string[];
+}
+
+export interface LeadCategory {
+  id: string;
+  title: string;
+  description: string;
+  color: string;
 }
 
 export interface Event {

@@ -23,6 +23,7 @@ export const [CardProvider, useCards] = createContextHook(() => {
           officePhone: card.officePhone ?? null,
           cellPhone: card.cellPhone ?? null,
           faxPhone: card.faxPhone ?? null,
+          categoryIds: card.categoryIds || [],
         }));
         setCards(migratedCards);
         

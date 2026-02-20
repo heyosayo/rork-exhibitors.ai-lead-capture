@@ -83,6 +83,7 @@ export default function ManualEntryScreen() {
       eventId: formData.eventId || null,
       profilePhotoUrl: null,
       phone: null,
+      categoryIds: [],
     };
     addCard(newCard);
     Alert.alert("Success", "Business card saved successfully!", [
