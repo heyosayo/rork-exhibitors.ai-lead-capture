@@ -12,13 +12,12 @@ import { useCards } from "@/providers/CardProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { useLayout } from "@/providers/LayoutProvider";
-import ModeToggle from "@/components/ModeToggle";
+
 
 export default function SettingsScreen() {
   const { cards, clearAllCards } = useCards();
   const { user, logout } = useAuth();
-  const { showDesktopLayout, isWeb } = useLayout();
+
 
   const handleLogout = () => {
     Alert.alert(
@@ -87,22 +86,10 @@ export default function SettingsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={showDesktopLayout ? [] : ['bottom']}>
-      {showDesktopLayout && (
-        <View style={styles.desktopHeader}>
-          <Text style={styles.desktopHeaderTitle}>Settings</Text>
-        </View>
-      )}
-
-      {isWeb && !showDesktopLayout && (
-        <View style={styles.mobileWebHeader}>
-          <ModeToggle />
-        </View>
-      )}
-
-      <ScrollView contentContainerStyle={[styles.content, showDesktopLayout && styles.contentDesktop]}>
-        <View style={showDesktopLayout ? styles.desktopGrid : undefined}>
-          <View style={showDesktopLayout ? styles.desktopColumn : undefined}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View>
+          <View>
             {user && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Account</Text>
@@ -140,7 +127,7 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          <View style={showDesktopLayout ? styles.desktopColumn : undefined}>
+          <View>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Data Management</Text>
               <View style={styles.sectionContent}>
@@ -184,7 +171,7 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View style={[styles.infoCard, showDesktopLayout && styles.infoCardDesktop]}>
+        <View style={styles.infoCard}>
           <Text style={styles.infoTitle}>How it works</Text>
           <Text style={styles.infoText}>
             1. Take a photo of a business card or name badge{'\n'}
@@ -203,42 +190,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8f9fa",
   },
-  desktopHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 20,
-    paddingHorizontal: 32,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-  },
-  desktopHeaderTitle: {
-    fontSize: 24,
-    fontWeight: "700" as const,
-    color: "#1F2937",
-  },
-  mobileWebHeader: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
-  },
+
   content: {
     padding: 16,
   },
-  contentDesktop: {
-    paddingHorizontal: 32,
-    paddingTop: 24,
-  },
-  desktopGrid: {
-    flexDirection: "row",
-    gap: 24,
-  },
-  desktopColumn: {
-    flex: 1,
-  },
+
   section: {
     marginBottom: 24,
   },
@@ -302,9 +258,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginTop: 8,
   },
-  infoCardDesktop: {
-    maxWidth: 600,
-  },
+
   infoTitle: {
     fontSize: 16,
     fontWeight: "600" as const,

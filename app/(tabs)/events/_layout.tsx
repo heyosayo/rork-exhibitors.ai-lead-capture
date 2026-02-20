@@ -1,13 +1,9 @@
 import { Stack } from "expo-router";
-import { useLayout } from "@/providers/LayoutProvider";
 
 export default function EventsLayout() {
-  const { showDesktopLayout } = useLayout();
-
   return (
     <Stack
       screenOptions={{
-        headerShown: !showDesktopLayout,
         headerStyle: {
           backgroundColor: '#4128C5',
         },

@@ -28,8 +28,7 @@ import { useEvents } from "@/providers/EventProvider";
 import { useCards } from "@/providers/CardProvider";
 import { Event } from "@/types/card";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLayout } from "@/providers/LayoutProvider";
-import ModeToggle from "@/components/ModeToggle";
+
 
 type EventWithCount = Event & { cardCount: number };
 
@@ -115,7 +114,7 @@ const CreateEventModal = memo(function CreateEventModal({
 export default function EventsScreen() {
   const { events, deleteEvent, addEvent, updateEvent, refetch } = useEvents();
   const { cards } = useCards();
-  const { showDesktopLayout, isWeb } = useLayout();
+
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
@@ -202,7 +201,7 @@ export default function EventsScreen() {
   const renderEvent = useCallback(
     ({ item }: { item: EventWithCount }) => (
       <TouchableOpacity
-        style={[styles.eventCard, { borderLeftColor: item.color }, showDesktopLayout && styles.eventCardDesktop]}
+        style={[styles.eventCard, { borderLeftColor: item.color }]}
         onPress={() => handleEventPress(item)}
         activeOpacity={0.7}
         testID={`eventCard-${item.id}`}
@@ -250,7 +249,7 @@ export default function EventsScreen() {
         </View>
       </TouchableOpacity>
     ),
-    [handleDelete, handleEventPress, openEditModal, showDesktopLayout]
+    [handleDelete, handleEventPress, openEditModal]
   );
 
   const keyExtractor = useCallback((item: EventWithCount) => item.id, []);
@@ -266,42 +265,17 @@ export default function EventsScreen() {
   });
 
   return (
-    <SafeAreaView style={styles.container} edges={showDesktopLayout ? [] : ["bottom"]}>
-      {showDesktopLayout && (
-        <View style={styles.desktopHeader}>
-          <Text style={styles.desktopHeaderTitle}>Events</Text>
-          <TouchableOpacity
-            style={styles.desktopCreateButton}
-            onPress={() => setShowCreateModal(true)}
-            activeOpacity={0.7}
-          >
-            <Plus size={18} color="#FFFFFF" />
-            <Text style={styles.desktopCreateButtonText}>New Event</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {isWeb && !showDesktopLayout && (
-        <View style={styles.mobileWebHeader}>
-          <ModeToggle />
-        </View>
-      )}
-
+    <SafeAreaView style={styles.container} edges={["bottom"]}>
       <FlatList
         data={eventsWithCounts}
         renderItem={renderEvent}
         keyExtractor={keyExtractor}
-        numColumns={showDesktopLayout ? 2 : 1}
-        key={showDesktopLayout ? "desktop-2col" : "mobile-1col"}
         contentContainerStyle={[
           styles.listContent,
-          showDesktopLayout && styles.listContentDesktop,
           eventsWithCounts.length === 0 ? styles.emptyListContent : null,
         ]}
-        columnWrapperStyle={showDesktopLayout ? styles.columnWrapper : undefined}
         ListHeaderComponent={
-          !showDesktopLayout ? (
-            <TouchableOpacity
+          <TouchableOpacity
               style={styles.exportButton}
               onPress={() => router.push('/export' as any)}
               activeOpacity={0.7}
@@ -312,23 +286,20 @@ export default function EventsScreen() {
               </View>
               <Text style={styles.exportText}>Export Your Data</Text>
             </TouchableOpacity>
-          ) : null
         }
         ListEmptyComponent={<EmptyState />}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#4128C5" />}
         keyboardShouldPersistTaps="handled"
       />
 
-      {!showDesktopLayout && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => setShowCreateModal(true)}
-          activeOpacity={0.8}
-          testID="openCreateEventModal"
-        >
-          <Plus size={28} color="#FFFFFF" />
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setShowCreateModal(true)}
+        activeOpacity={0.8}
+        testID="openCreateEventModal"
+      >
+        <Plus size={28} color="#FFFFFF" />
+      </TouchableOpacity>
 
       <CreateEventModal
         visible={isModalVisible}
@@ -349,55 +320,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F6FAFE",
   },
-  desktopHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 20,
-    paddingHorizontal: 32,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-  },
-  desktopHeaderTitle: {
-    fontSize: 24,
-    fontWeight: "700" as const,
-    color: "#1F2937",
-  },
-  desktopCreateButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#4128C5",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    gap: 8,
-  },
-  desktopCreateButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600" as const,
-  },
-  mobileWebHeader: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
-  },
+
   listContent: {
     padding: 16,
   },
-  listContentDesktop: {
-    paddingHorizontal: 32,
-    paddingTop: 24,
-  },
+
   emptyListContent: {
     flex: 1,
   },
-  columnWrapper: {
-    gap: 16,
-  },
+
   eventCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -409,10 +340,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  eventCardDesktop: {
-    flex: 1,
-    maxWidth: "49%" as any,
-  },
+
   eventContent: {
     padding: 16,
   },

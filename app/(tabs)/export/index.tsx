@@ -18,12 +18,12 @@ import { useEvents } from "@/providers/EventProvider";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Clipboard from 'expo-clipboard';
 import * as MailComposer from 'expo-mail-composer';
-import { useLayout } from "@/providers/LayoutProvider";
+
 
 export default function ExportScreen() {
   const { cards } = useCards();
   const { events } = useEvents();
-  const { showDesktopLayout } = useLayout();
+
   const [copiedFormat, setCopiedFormat] = useState<string | null>(null);
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
   const [showEventFilter, setShowEventFilter] = useState(false);
@@ -248,16 +248,10 @@ export default function ExportScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={showDesktopLayout ? [] : ['bottom']}>
-      {showDesktopLayout && (
-        <View style={styles.desktopHeader}>
-          <Text style={styles.desktopHeaderTitle}>Export Data</Text>
-        </View>
-      )}
-
-      <ScrollView contentContainerStyle={[styles.content, showDesktopLayout && styles.contentDesktop]}>
-        <View style={showDesktopLayout ? styles.desktopGrid : undefined}>
-          <View style={showDesktopLayout ? styles.desktopMainCol : undefined}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View>
+          <View>
             <View style={styles.statsCard}>
               <FileSpreadsheet size={32} color="#4128C5" />
               <Text style={styles.statsTitle}>Export Your Data</Text>
@@ -313,7 +307,7 @@ export default function ExportScreen() {
             )}
           </View>
 
-          <View style={showDesktopLayout ? styles.desktopSideCol : undefined}>
+          <View>
             {cards.length > 0 && (
               <>
                 <Text style={styles.sectionTitle}>Filter by Events</Text>
@@ -330,7 +324,7 @@ export default function ExportScreen() {
                     </Text>
                   </TouchableOpacity>
 
-                  {(showEventFilter || showDesktopLayout) && (
+                  {showEventFilter && (
                     <View style={styles.eventFilterContainer}>
                       <View style={styles.filterActions}>
                         <TouchableOpacity onPress={selectAllEvents} style={styles.filterAction}>
@@ -365,26 +359,14 @@ export default function ExportScreen() {
                   )}
                 </View>
 
-                {!showDesktopLayout && (
-                  <View style={styles.instructions}>
-                    <Text style={styles.instructionsTitle}>How to import to Google Sheets:</Text>
-                    <Text style={styles.instructionStep}>1. Copy data as CSV using the button above</Text>
-                    <Text style={styles.instructionStep}>2. Open Google Sheets in your browser</Text>
-                    <Text style={styles.instructionStep}>3. Select cell A1 and paste (Ctrl/Cmd + V)</Text>
-                    <Text style={styles.instructionStep}>4. Use &quot;Data → Split text to columns&quot; if needed</Text>
-                  </View>
-                )}
+                <View style={styles.instructions}>
+                  <Text style={styles.instructionsTitle}>How to import to Google Sheets:</Text>
+                  <Text style={styles.instructionStep}>1. Copy data as CSV using the button above</Text>
+                  <Text style={styles.instructionStep}>2. Open Google Sheets in your browser</Text>
+                  <Text style={styles.instructionStep}>3. Select cell A1 and paste (Ctrl/Cmd + V)</Text>
+                  <Text style={styles.instructionStep}>4. Use &quot;Data → Split text to columns&quot; if needed</Text>
+                </View>
               </>
-            )}
-
-            {showDesktopLayout && cards.length > 0 && (
-              <View style={styles.instructions}>
-                <Text style={styles.instructionsTitle}>How to import to Google Sheets:</Text>
-                <Text style={styles.instructionStep}>1. Copy data as CSV using the button above</Text>
-                <Text style={styles.instructionStep}>2. Open Google Sheets in your browser</Text>
-                <Text style={styles.instructionStep}>3. Select cell A1 and paste (Ctrl/Cmd + V)</Text>
-                <Text style={styles.instructionStep}>4. Use &quot;Data → Split text to columns&quot; if needed</Text>
-              </View>
             )}
           </View>
         </View>
@@ -457,38 +439,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F6FAFE",
   },
-  desktopHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 20,
-    paddingHorizontal: 32,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-  },
-  desktopHeaderTitle: {
-    fontSize: 24,
-    fontWeight: "700" as const,
-    color: "#1F2937",
-  },
+
   content: {
     padding: 16,
   },
-  contentDesktop: {
-    paddingHorizontal: 32,
-    paddingTop: 24,
-  },
-  desktopGrid: {
-    flexDirection: "row",
-    gap: 24,
-  },
-  desktopMainCol: {
-    flex: 2,
-  },
-  desktopSideCol: {
-    flex: 1,
-  },
+
   statsCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,

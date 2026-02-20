@@ -17,12 +17,11 @@ import { Plus, Search, Trash2, User, Building, Mail, Phone, CreditCard, Clock } 
 import { useCards } from "@/providers/CardProvider";
 import { BusinessCard } from "@/types/card";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLayout } from "@/providers/LayoutProvider";
-import ModeToggle from "@/components/ModeToggle";
+
 
 export default function HomeScreen() {
   const { cards, deleteCard, refetch } = useCards();
-  const { showDesktopLayout, isWeb } = useLayout();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
@@ -82,7 +81,7 @@ export default function HomeScreen() {
 
   const renderCard = ({ item }: { item: BusinessCard }) => (
     <TouchableOpacity
-      style={[styles.card, showDesktopLayout && styles.cardDesktop]}
+      style={styles.card}
       onPress={() => router.push({ pathname: '/card/[id]' as any, params: { id: item.id } })}
       activeOpacity={0.7}
     >
@@ -195,22 +194,12 @@ export default function HomeScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={showDesktopLayout ? [] : ['top', 'bottom']}>
-      <View style={[styles.header, showDesktopLayout && styles.headerDesktop]}>
-        <Text style={[styles.brandText, showDesktopLayout && styles.brandTextDesktop]}>
-          {showDesktopLayout ? "Business Cards" : "Exhibitor Tech"}
-        </Text>
-        {isWeb && !showDesktopLayout && (
-          <View style={styles.mobileToggleWrap}>
-            <ModeToggle />
-          </View>
-        )}
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <View style={styles.header}>
+        <Text style={styles.brandText}>Exhibitor Tech</Text>
       </View>
 
-      <View style={[
-        styles.searchContainer,
-        showDesktopLayout && styles.searchContainerDesktop,
-      ]}>
+      <View style={styles.searchContainer}>
         <Search size={20} color="#9CA3AF" />
         <TextInput
           style={styles.searchInput}
@@ -219,30 +208,16 @@ export default function HomeScreen() {
           onChangeText={setSearchQuery}
           placeholderTextColor="#9CA3AF"
         />
-        {showDesktopLayout && (
-          <TouchableOpacity
-            style={styles.desktopAddButton}
-            onPress={handleAddCard}
-            activeOpacity={0.7}
-          >
-            <Plus size={18} color="#FFFFFF" />
-            <Text style={styles.desktopAddButtonText}>Add Card</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       <FlatList
         data={filteredCards}
         renderItem={renderCard}
         keyExtractor={(item) => item.id}
-        numColumns={showDesktopLayout ? 2 : 1}
-        key={showDesktopLayout ? "desktop-2col" : "mobile-1col"}
         contentContainerStyle={[
           styles.listContent,
-          showDesktopLayout && styles.listContentDesktop,
           filteredCards.length === 0 && styles.emptyListContent
         ]}
-        columnWrapperStyle={showDesktopLayout ? styles.columnWrapper : undefined}
         ListEmptyComponent={<EmptyState />}
         refreshControl={
           <RefreshControl
@@ -253,15 +228,13 @@ export default function HomeScreen() {
         }
       />
 
-      {!showDesktopLayout && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={handleAddCard}
-          activeOpacity={0.8}
-        >
-          <Plus size={28} color="#FFFFFF" />
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={handleAddCard}
+        activeOpacity={0.8}
+      >
+        <Plus size={28} color="#FFFFFF" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -277,32 +250,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignItems: "center",
   },
-  headerDesktop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 20,
-    paddingHorizontal: 32,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-  },
+
   brandText: {
     fontSize: 32,
     fontFamily: "Poppins_700Bold",
     color: "#FFFFFF",
     letterSpacing: 0.5,
   },
-  brandTextDesktop: {
-    fontSize: 24,
-    color: "#1F2937",
-    fontFamily: "Poppins_600SemiBold",
-  },
-  mobileToggleWrap: {
-    position: "absolute",
-    top: 8,
-    right: 12,
-  },
+
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -318,46 +273,23 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  searchContainerDesktop: {
-    marginHorizontal: 32,
-    marginTop: 24,
-    marginBottom: 16,
-  },
+
   searchInput: {
     flex: 1,
     marginLeft: 12,
     fontSize: 16,
     color: "#1F2937",
   },
-  desktopAddButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#4128C5",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    marginLeft: 16,
-    gap: 8,
-  },
-  desktopAddButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600" as const,
-  },
+
   listContent: {
     padding: 16,
     paddingTop: 8,
   },
-  listContentDesktop: {
-    paddingHorizontal: 32,
-    paddingTop: 8,
-  },
+
   emptyListContent: {
     flex: 1,
   },
-  columnWrapper: {
-    gap: 16,
-  },
+
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -368,10 +300,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  cardDesktop: {
-    flex: 1,
-    maxWidth: "49%" as any,
-  },
+
   cardContent: {
     padding: 16,
   },
